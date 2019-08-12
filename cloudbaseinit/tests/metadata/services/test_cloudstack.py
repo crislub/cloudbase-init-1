@@ -87,7 +87,7 @@ class CloudStackTest(unittest.TestCase):
         mock_test_api.assert_called_once_with(
             CONF.cloudstack.metadata_base_url)
         mock_check_metadata_ip_route.assert_called_once_with(
-            CONF.cloudstack.metadata_base_url)
+            CONF.cloudstack.metadata_base_url, 0)
 
     @mock.patch('cloudbaseinit.osutils.factory.get_os_utils')
     @mock.patch('cloudbaseinit.metadata.services.cloudstack.CloudStack'

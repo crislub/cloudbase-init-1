@@ -86,7 +86,8 @@ class CloudStack(base.BaseHTTPMetadataService):
         super(CloudStack, self).load()
 
         if CONF.cloudstack.add_metadata_private_ip_route:
-            network.check_metadata_ip_route(CONF.cloudstack.metadata_base_url)
+            network.check_metadata_ip_route(CONF.cloudstack.metadata_base_url,
+                                            CONF.cloudstack.check_metadata_ip_route_retries)
 
         if self._test_api(CONF.cloudstack.metadata_base_url):
             return True
