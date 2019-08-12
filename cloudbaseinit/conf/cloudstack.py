@@ -45,7 +45,13 @@ class CloudStackOptions(conf_base.Options):
                      "certificates of trusted CAs."),
             cfg.BoolOpt(
                 "add_metadata_private_ip_route", default=False,
-                help="Add a route for the metadata ip address to the gateway"),
+                help="Add a route for the metadata ip address to the "
+                     "gateway."),
+            cfg.IntOpt(
+                "check_metadata_ip_route_retries", default=3,
+                help="How many times to check the metadata url before "
+                     "setting the private ip route to the metadata host."
+            ),
         ]
 
     def register(self):

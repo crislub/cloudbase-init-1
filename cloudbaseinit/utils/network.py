@@ -37,7 +37,7 @@ def get_local_ip(address=None):
 
 
 def check_url(url, retries_count=MAX_URL_CHECK_RETRIES):
-    for i in range(0, MAX_URL_CHECK_RETRIES):
+    for i in range(0, retries_count):
         try:
             LOG.debug("Testing url: %s" % url)
             request.urlopen(url)
@@ -47,7 +47,7 @@ def check_url(url, retries_count=MAX_URL_CHECK_RETRIES):
     return False
 
 
-def check_metadata_ip_route(metadata_url):
+def check_metadata_ip_route(metadata_url, retries_count=MAX_URL_CHECK_RETRIES):
     # Workaround for: https://bugs.launchpad.net/quantum/+bug/1174657
     osutils = osutils_factory.get_os_utils()
 
@@ -59,7 +59,7 @@ def check_metadata_ip_route(metadata_url):
 
         if metadata_host.startswith("169.254."):
             if (not osutils.check_static_route_exists(metadata_host) and
-                    not check_url(metadata_url)):
+                    not check_url(metadata_url, retries_count)):
                 (interface_index, gateway) = osutils.get_default_gateway()
                 if gateway:
                     try:

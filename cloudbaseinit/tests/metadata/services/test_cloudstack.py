@@ -36,6 +36,7 @@ class CloudStackTest(unittest.TestCase):
         CONF.set_override('retry_count_interval', 0)
         CONF.set_override('retry_count', 1)
         CONF.set_override('add_metadata_private_ip_route', True, 'cloudstack')
+        CONF.set_override('check_metadata_ip_route_retries', 5, 'cloudstack')
         self._service = self._get_service()
         self._service._metadata_uri = "http://10.1.1.1/latest/meta-data/"
 
@@ -87,7 +88,7 @@ class CloudStackTest(unittest.TestCase):
         mock_test_api.assert_called_once_with(
             CONF.cloudstack.metadata_base_url)
         mock_check_metadata_ip_route.assert_called_once_with(
-            CONF.cloudstack.metadata_base_url)
+            CONF.cloudstack.metadata_base_url, 5)
 
     @mock.patch('cloudbaseinit.osutils.factory.get_os_utils')
     @mock.patch('cloudbaseinit.metadata.services.cloudstack.CloudStack'
