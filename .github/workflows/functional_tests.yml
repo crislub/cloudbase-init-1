@@ -1,0 +1,51 @@
+name: Cloudbase-Init functional tests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    strategy:
+      max-parallel: 100
+      matrix:
+        python-version: [3.6]
+        cloud: [vmwareguest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Download external dependencies
+      shell: powershell
+      run: |
+        try { git clone "https://github.com/ader1990/cloudbase-init-test-resources-1" cbs-test-res -b vmware_guest_info}catch{}
+        cd "cbs-test-res/${{ matrix.cloud }}"
+    - name: Install local dependencies
+      shell: powershell
+      run: |
+        try {
+            python -W ignore -m pip install --upgrade pip 2>&1 | %{ "$_" }
+        } catch {}
+        try {
+            python -W ignore -m pip install -c https://git.openstack.org/cgit/openstack/requirements/plain/upper-constraints.txt -U --force-reinstall -r requirements.txt 2>&1 | %{ "$_" }
+        } catch {}
+        try {
+            python -W ignore -m pip install . 2>&1 | %{ "$_" }
+        } catch {}
+    - name: Run Cloudbase-Init
+      shell: powershell
+      run: |
+        $Erroractionpreference = "Continue"
+        winrm.cmd quickconfig -force -q | Out-Null
+        cd "cbs-test-res/${{ matrix.cloud }}/"
+        try {
+            & cmd /c "cloudbase-init.exe --noreset_service_password --config-file ./cloudbase-init.conf 2>&1" | Tee-Object -FilePath cloudbase-init.log
+        } catch {}
+        $errors = $(cat ./cloudbase-init.log | Where-Object {$_ -like "*error*"})
+        $pluginExecution = $(cat ./cloudbase-init.log | Where-Object {$_ -like "*Plugins execution done*"})
+        if ($errors -or !$pluginExecution) {
+            exit 1
+        }
