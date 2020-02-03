@@ -38,24 +38,22 @@ class SetUserPasswordPluginTests(unittest.TestCase):
             '2013-04-04')
 
     @mock.patch('base64.b64encode')
-    @mock.patch('cloudbaseinit.utils.crypt.CryptManager'
-                '.load_ssh_rsa_public_key')
-    def test_encrypt_password(self, mock_load_ssh_key, mock_b64encode):
-        mock_rsa = mock.MagicMock()
+    @mock.patch('cryptography.hazmat.backends.default_backend')
+    @mock.patch('cryptography.hazmat.primitives.asymmetric.padding.PKCS1v15')
+    @mock.patch('cryptography.hazmat.primitives.serialization'
+                '.load_ssh_public_key')
+    def test_encrypt_password(self, mock_serialization,
+                              mock_padding, mock_backend, mock_base64):
         fake_ssh_pub_key = 'fake key'
         fake_password = 'fake password'
-        mock_load_ssh_key.return_value = mock_rsa
-        mock_rsa.__enter__().public_encrypt.return_value = 'public encrypted'
-        mock_b64encode.return_value = 'encrypted password'
+        fake_encrypt_pwd = 'encrypted password'
+        mock_serialization.return_value.encrypt.return_value = 'fake_encrypt'
+        mock_base64.return_value = fake_encrypt_pwd
 
         response = self._setpassword_plugin._encrypt_password(
             fake_ssh_pub_key, fake_password)
 
-        mock_load_ssh_key.assert_called_with(fake_ssh_pub_key)
-        mock_rsa.__enter__().public_encrypt.assert_called_with(
-            b'fake password')
-        mock_b64encode.assert_called_with('public encrypted')
-        self.assertEqual('encrypted password', response)
+        self.assertEqual(fake_encrypt_pwd, response)
 
     def _test_get_password(self, inject_password):
         shared_data = {}

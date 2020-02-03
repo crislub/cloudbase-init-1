@@ -14,6 +14,9 @@
 
 import base64
 
+from cryptography.hazmat import backends
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 from oslo_log import log as oslo_logging
 
 from cloudbaseinit import conf as cloudbaseinit_conf
@@ -21,19 +24,20 @@ from cloudbaseinit import constant
 from cloudbaseinit.osutils import factory as osutils_factory
 from cloudbaseinit.plugins.common import base
 from cloudbaseinit.plugins.common import constants as plugin_constant
-from cloudbaseinit.utils import crypt
-
 
 CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
 
 class SetUserPasswordPlugin(base.BasePlugin):
-
-    def _encrypt_password(self, ssh_pub_key, password):
-        cm = crypt.CryptManager()
-        with cm.load_ssh_rsa_public_key(ssh_pub_key) as rsa:
-            enc_password = rsa.public_encrypt(password.encode())
+    @staticmethod
+    def _encrypt_password(ssh_pub_key, password):
+        rsa_public_key = serialization.load_ssh_public_key(
+            ssh_pub_key.encode(), backends.default_backend())
+        enc_password = rsa_public_key.encrypt(
+            password.encode(),
+            padding.PKCS1v15()
+        )
         return base64.b64encode(enc_password)
 
     def _get_password(self, service, shared_data):
