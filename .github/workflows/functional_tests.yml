@@ -10,6 +10,7 @@ jobs:
       max-parallel: 100
       matrix:
         python-version: [3.6]
+        architecture: [x64, x86]
         cloud: [openstack]
 
     steps:
@@ -18,7 +19,7 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-        architecture: x86
+        architecture: ${{ matrix.architecture }}
     - name: Install PyMI
       shell: cmd
       run: |
