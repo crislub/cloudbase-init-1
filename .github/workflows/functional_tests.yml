@@ -9,9 +9,9 @@ jobs:
     strategy:
       max-parallel: 100
       matrix:
-        python-version: [2.7]
+        python-version: [2.7, 3.6]
         architecture: [x86]
-        cloud: [openstack,openstack-http,cloudstack,ovf,maas,packet,empty,vmwareguest]
+        cloud: [openstack-http,cloudstack]
 
     steps:
     - uses: actions/checkout@v1
