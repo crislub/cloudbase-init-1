@@ -11,7 +11,7 @@ jobs:
       matrix:
         python-version: [2.7]
         architecture: [x86]
-        cloud: [openstack]
+        cloud: [openstack,openstack-http,cloudstack,ovf,maas,packet,empty,vmware]
 
     steps:
     - uses: actions/checkout@v1
