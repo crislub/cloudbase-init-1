@@ -10,7 +10,7 @@ jobs:
       max-parallel: 100
       matrix:
         python-version: [2.7]
-        architecture: [x64, x86]
+        architecture: [x86]
         cloud: [openstack]
 
     steps:
