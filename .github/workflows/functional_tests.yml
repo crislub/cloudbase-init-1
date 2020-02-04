@@ -58,6 +58,7 @@ jobs:
             (Get-Content ".\metadata\openstack\latest\network_data.json.template").Replace("REPLACE_MAC_ADDRESS", ((Get-NetAdapter Ethernet).macaddress).Replace("-",":")) | Set-Content ".\metadata\openstack\latest\network_data.json" -Encoding Ascii
         }
         Start-Process -FilePath python.exe -ArgumentList "-m http.server" -NoNewWindow -WorkingDirectory (Resolve-Path("./metadata")) 2>&1 >> http_server.log
+        Start-Process -FilePath python.exe -ArgumentList "-m SimpleHTTPServer" -NoNewWindow -WorkingDirectory (Resolve-Path("./metadata")) 2>&1 >> http_server1.log
         cd "cbs-test-res/${{ matrix.cloud }}/"
         try {
             & cmd /c "cloudbase-init.exe --noreset_service_password --config-file ./cloudbase-init.conf 2>&1" | Tee-Object -FilePath cloudbase-init.log
