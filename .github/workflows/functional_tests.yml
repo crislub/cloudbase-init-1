@@ -26,8 +26,6 @@ jobs:
         SETLOCAL EnableDelayedExpansion
         git clone https://github.com/cloudbase/PyMI.git
         cd PyMi
-        pip install -r requirements.txt || exit /b
-        pip install . || exit /b
     - name: Download external dependencies
       shell: powershell
       run: |
