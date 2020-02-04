@@ -41,6 +41,8 @@ class GroupsPlugin(base.BaseCloudConfigPlugin):
 
         osutils = osutils_factory.get_os_utils()
 
+        LOG.info("type of groups data %r" % type(data))
+        LOG.info("groups data %s" % data)
         for item in data:
             group_name = None
             group_users = []
