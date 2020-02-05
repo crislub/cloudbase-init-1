@@ -247,8 +247,8 @@ The following cloud-config directives are supported:
           - ['echo', '1']
 
 
-The cloud-config directives are executed in the following order: write_files, set_timezone,
-set_hostname, ntp, runcmd.
+The cloud-config directives are executed by default in the following order: write_files,
+set_timezone, set_hostname, ntp, groups, users, runcmd.
 
 The execution of set_hostname or runcmd can request a reboot if needed. The reboot
 is performed at the end of the cloud-config execution (after all the directives have been
