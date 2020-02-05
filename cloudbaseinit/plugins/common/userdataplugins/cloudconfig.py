@@ -54,6 +54,7 @@ class CloudConfigPluginExecutor(object):
             # list, then default to a sane and unreachable value.
             return DEFAULT_ORDER_VALUE
 
+        LOG.info("raw plugins %s" % plugins)
         self._expected_plugins = sorted(
             plugins.items(),
             key=lambda item: _lookup_priority(item[0]))
@@ -75,6 +76,8 @@ class CloudConfigPluginExecutor(object):
         """Call each plugin, in the order defined in the configuration file"""
         reboot = execcmd.NO_REBOOT
         plugins = factory.load_plugins()
+        LOG.info('loaded plugins %s' % plugins)
+        LOG.info('expected plugins %s' % self._expected_plugins)
         for plugin_name, value in self._expected_plugins:
             method = plugins.get(plugin_name)
             if not method:
