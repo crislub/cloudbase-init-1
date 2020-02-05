@@ -51,8 +51,9 @@ class CloudConfigPluginExecutor(object):
                     pass
 
             # fallback to the default order
+            all_plugins = list(factory.PLUGINS.keys())
             try:
-                return list(factory.PLUGINS.items()).index(plugin)
+                return all_plugins.index(plugin)
             except ValueError as exc:
                 LOG.exception(exc)
                 pass
