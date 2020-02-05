@@ -14,7 +14,7 @@
 #    under the License.
 
 from oslo_log import log as oslo_logging
-import yaml
+import oyaml as yaml
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit.plugins.common import execcmd
