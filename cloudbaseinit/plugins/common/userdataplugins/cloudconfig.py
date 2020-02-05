@@ -14,7 +14,8 @@
 #    under the License.
 
 from oslo_log import log as oslo_logging
-import oyaml as yaml
+import yaml
+import yamlloader
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit.plugins.common import execcmd
@@ -63,7 +64,7 @@ class CloudConfigPluginExecutor(object):
     def from_yaml(cls, stream):
         """Initialize an executor from an yaml stream."""
 
-        loader = getattr(yaml, 'CLoader', yaml.Loader)
+        loader = yamlloader.ordereddict.Loader
         try:
             content = yaml.load(stream, Loader=loader)
         except (TypeError, ValueError, AttributeError):
