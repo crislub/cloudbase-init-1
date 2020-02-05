@@ -45,9 +45,14 @@ class CloudConfigPluginExecutor(object):
             try:
                 return CONF.cloud_config_plugins.index(plugin)
             except ValueError:
-                # If the plugin was not specified in the order
-                # list, then default to a sane and unreachable value.
-                return DEFAULT_ORDER_VALUE
+                pass
+            try:
+                return list(factory.PLUGINS.items()).index(plugin)
+            except ValueError:
+                pass
+            # If the plugin was not specified in config or factory
+            # list, then default to a sane and unreachable value.
+            return DEFAULT_ORDER_VALUE
 
         self._expected_plugins = sorted(
             plugins.items(),
@@ -67,7 +72,7 @@ class CloudConfigPluginExecutor(object):
         return cls(**content)
 
     def execute(self):
-        """Call each plugin, in the order requested by the user."""
+        """Call each plugin, in the order defined in the configuration file"""
         reboot = execcmd.NO_REBOOT
         plugins = factory.load_plugins()
         for plugin_name, value in self._expected_plugins:
