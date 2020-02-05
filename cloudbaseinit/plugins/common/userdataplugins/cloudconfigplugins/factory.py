@@ -43,5 +43,10 @@ PLUGINS = collections.OrderedDict([
 
 def load_plugins():
     loader = classloader.ClassLoader()
-    return {section: loader.load_class(class_path)().process
-            for section, class_path in PLUGINS.items()}
+    plugins_loaders = collections.OrderedDict()
+    for section, class_path in PLUGINS.items():
+        plugins_loaders.update(
+            {
+                section: loader.load_class(class_path)().process
+            })
+    return plugins_loaders
