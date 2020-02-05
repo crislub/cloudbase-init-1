@@ -22,6 +22,7 @@ jobs:
         architecture: ${{ matrix.architecture }}
     - name: Install PyMI
       shell: cmd
+      if: matrix.python-version != 2.7
       run: |
         SETLOCAL EnableDelayedExpansion
         git clone https://github.com/cloudbase/PyMI.git
@@ -30,6 +31,7 @@ jobs:
         pip install .
     - name: Download external dependencies
       shell: powershell
+      if: !(matrix.python-version == 2.7 && matrix.architecture == x64)
       run: |
         try { git clone "https://github.com/ader1990/cloudbase-init-test-resources-1" cbs-test-res }catch{}
         cd "cbs-test-res/${{ matrix.cloud }}"
@@ -38,6 +40,7 @@ jobs:
         } catch {}
     - name: Install local dependencies
       shell: powershell
+      if: !(matrix.python-version == 2.7 && matrix.architecture == x64)
       run: |
         try {
             python -W ignore -m pip install --upgrade pip 2>&1 | %{ "$_" }
@@ -49,6 +52,7 @@ jobs:
             python -W ignore -m pip install . 2>&1 | %{ "$_" }
         } catch {}
     - name: Run Cloudbase-Init
+      if: !(matrix.python-version == 2.7 && matrix.architecture == x64)
       shell: powershell
       run: |
         $Erroractionpreference = "Continue"
