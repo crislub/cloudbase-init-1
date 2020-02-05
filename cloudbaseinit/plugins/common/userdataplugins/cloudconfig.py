@@ -15,7 +15,6 @@
 
 from oslo_log import log as oslo_logging
 import yaml
-import yamlloader
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit.plugins.common import execcmd
@@ -43,16 +42,23 @@ class CloudConfigPluginExecutor(object):
 
     def __init__(self, **plugins):
         def _lookup_priority(plugin):
-            try:
-                return CONF.cloud_config_plugins.index(plugin)
-            except ValueError:
-                pass
+            if CONF.cloud_config_plugins:
+                # return the order from the config
+                try:
+                    return CONF.cloud_config_plugins.index(plugin)
+                except ValueError as exc:
+                    LOG.exception(exc)
+                    pass
+
+            # fallback to the default order
             try:
                 return list(factory.PLUGINS.items()).index(plugin)
-            except ValueError:
+            except ValueError as exc:
+                LOG.exception(exc)
                 pass
-            # If the plugin was not specified in config or factory
-            # list, then default to a sane and unreachable value.
+
+            # If plugin is not supported or does not exist
+            # default to a sane and unreachable value.
             return DEFAULT_ORDER_VALUE
 
         LOG.info("raw plugins %s" % plugins)
@@ -64,7 +70,7 @@ class CloudConfigPluginExecutor(object):
     def from_yaml(cls, stream):
         """Initialize an executor from an yaml stream."""
 
-        loader = yamlloader.ordereddict.Loader
+        loader = getattr(yaml, 'CLoader', yaml.Loader)
         try:
             content = yaml.load(stream, Loader=loader)
         except (TypeError, ValueError, AttributeError):
@@ -74,11 +80,9 @@ class CloudConfigPluginExecutor(object):
         return cls(**content)
 
     def execute(self):
-        """Call each plugin, in the order defined in the configuration file"""
+        """Call each plugin, in the order requested by the user."""
         reboot = execcmd.NO_REBOOT
         plugins = factory.load_plugins()
-        LOG.info('loaded plugins %s' % plugins)
-        LOG.info('expected plugins %s' % self._expected_plugins)
         for plugin_name, value in self._expected_plugins:
             method = plugins.get(plugin_name)
             if not method:
