@@ -16,9 +16,7 @@
 import base64
 import gzip
 import io
-import json
 import os
-import yaml
 
 from oslo_log import log as oslo_logging
 
@@ -31,11 +29,6 @@ CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
 
-class YamlParserConfigError(Exception):
-    """Exception for Yaml parsing failures"""
-    pass
-
-
 class VMwareGuestInfoService(base.BaseMetadataService):
     def __init__(self):
         super(VMwareGuestInfoService, self).__init__()
@@ -43,19 +36,6 @@ class VMwareGuestInfoService(base.BaseMetadataService):
         self._osutils = osutils_factory.get_os_utils()
         self._meta_data = {}
         self._user_data = None
-
-    @staticmethod
-    def _parse_data(raw_data):
-        """Parse data as json. Fallback to yaml if json parsing fails"""
-
-        try:
-            return json.loads(raw_data)
-        except (TypeError, ValueError, AttributeError):
-            loader = getattr(yaml, 'CLoader', yaml.Loader)
-            try:
-                return yaml.load(raw_data, Loader=loader)
-            except (TypeError, ValueError, AttributeError):
-                raise YamlParserConfigError("Invalid yaml data provided.")
 
     @staticmethod
     def _decode_data(raw_data, is_base64, is_gzip):
