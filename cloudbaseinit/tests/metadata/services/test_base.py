@@ -16,6 +16,9 @@ import mock
 import requests
 import unittest
 
+import ddt
+import yaml
+
 from cloudbaseinit import exception
 from cloudbaseinit.metadata.services import base
 
@@ -30,6 +33,7 @@ class FakeService(base.BaseMetadataService):
         return self._get_data()
 
 
+@ddt.ddt
 class TestBase(unittest.TestCase):
 
     def setUp(self):
@@ -92,6 +96,30 @@ class TestBase(unittest.TestCase):
             }
         }
         self.assertEqual(expected_response, self._service.get_instance_data())
+
+    @ddt.data((b'', (None, False)),
+              (b'{}', ({}, False)),
+              (b'---', (None, True)),
+              (b'test: test', ({"test": "test"}, True)))
+    @ddt.unpack
+    @mock.patch("json.loads")
+    @mock.patch("yaml.load")
+    def test_parse_data(self, stream, expected_parsed_output,
+                        mock_yaml_load, mock_json_loads):
+        if not expected_parsed_output[1]:
+            mock_json_loads.return_value = expected_parsed_output[0]
+        else:
+            mock_json_loads.side_effect = TypeError("Failed to parse json")
+            mock_yaml_load.return_value = expected_parsed_output[0]
+
+        parsed_output = self._service._parse_data(stream)
+
+        mock_json_loads.assert_called_once_with(stream)
+        if expected_parsed_output[1]:
+            loader = getattr(yaml, 'CLoader', yaml.Loader)
+            mock_yaml_load.assert_called_once_with(stream, Loader=loader)
+
+        self.assertEqual(parsed_output, expected_parsed_output[0])
 
 
 class TestBaseHTTPMetadataService(unittest.TestCase):

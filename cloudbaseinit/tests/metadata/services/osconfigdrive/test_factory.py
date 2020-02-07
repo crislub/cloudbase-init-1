@@ -34,13 +34,15 @@ class ClassloaderTest(unittest.TestCase):
     @mock.patch('cloudbaseinit.utils.classloader.ClassLoader.load_class')
     def _test_get_config_drive_manager(self, mock_load_class, platform):
         sys.platform = platform
+        fake_config_type = 'fake config type'
 
         if platform is not "win32":
             self.assertRaises(NotImplementedError,
-                              factory.get_config_drive_manager)
+                              factory.get_config_drive_manager,
+                              fake_config_type)
 
         else:
-            response = factory.get_config_drive_manager()
+            response = factory.get_config_drive_manager('fake_config')
 
             mock_load_class.assert_called_once_with(
                 'cloudbaseinit.metadata.services.osconfigdrive.'
