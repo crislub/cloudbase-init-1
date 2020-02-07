@@ -33,6 +33,11 @@ CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
 CONFIG_DRIVE_LABEL = 'config-2'
+NOCLOUD_CONFIG_DRIVE_LABEL = 'cidata'
+DRIVE_LABELS = {
+    base.CONFIG_DRIVE: CONFIG_DRIVE_LABEL,
+    base.NOCLOUD_CONFIG_DRIVE: NOCLOUD_CONFIG_DRIVE_LABEL
+}
 MAX_SECTOR_SIZE = 4096
 # Absolute offset values and the ISO magic string.
 OFFSET_BOOT_RECORD = 0x8000
@@ -42,6 +47,10 @@ ISO_ID = b'CD001'
 OFFSET_VOLUME_SIZE = OFFSET_BOOT_RECORD + 80
 OFFSET_BLOCK_SIZE = OFFSET_BOOT_RECORD + 128
 PEEK_SIZE = 2
+METADATA_FILE_LOCATIONS = {
+    base.CONFIG_DRIVE: 'openstack\\latest\\meta_data.json',
+    base.NOCLOUD_CONFIG_DRIVE: 'meta-data'
+}
 
 
 class WindowsConfigDriveManager(base.BaseConfigDriveManager):
@@ -49,19 +58,28 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
     def __init__(self):
         super(WindowsConfigDriveManager, self).__init__()
         self._osutils = osutils_factory.get_os_utils()
+        self._config_type = None
+
+    def _meta_data_file_exists(self, drive):
+        metadata_file = METADATA_FILE_LOCATIONS.get(self._config_type)
+        metadata_path = os.path.join(drive, metadata_file)
+
+        if os.path.exists(metadata_path):
+            return True
+
+        LOG.debug('%s not found', metadata_path)
+        return False
 
     def _check_for_config_drive(self, drive):
         label = self._osutils.get_volume_label(drive)
-        if label and label.lower() == CONFIG_DRIVE_LABEL:
-            if os.path.exists(os.path.join(drive,
-                              'openstack\\latest\\meta_data.json')):
-                LOG.info('Config Drive found on %s', drive)
-                return True
-            LOG.debug('%s\openstack\latest\meta_data.json not '
-                      'found', drive)
+        required_label = DRIVE_LABELS.get(self._config_type)
+        if label and label.lower() == required_label and \
+                self._meta_data_file_exists(drive):
+            LOG.info('Config Drive found on %s', drive)
+            return True
         LOG.debug("Looking for a Config Drive with label '%s' on '%s'. "
                   "Found mismatching label '%s'.",
-                  CONFIG_DRIVE_LABEL, drive, label)
+                  required_label, drive, label)
         return False
 
     def _get_iso_file_size(self, device):
@@ -197,14 +215,18 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
         return False
 
     def get_config_drive_files(self, searched_types=None,
-                               searched_locations=None):
+                               searched_locations=None,
+                               config_type=base.CONFIG_DRIVE):
+        self._config_type = config_type
         searched_types = searched_types or []
         searched_locations = searched_locations or []
 
         for cd_type, cd_location in itertools.product(searched_types,
                                                       searched_locations):
-            LOG.debug('Looking for Config Drive %(type)s in %(location)s',
-                      {"type": cd_type, "location": cd_location})
+            LOG.debug('Looking for Config Drive %(type)s in %(location)s '
+                      'with config type %(config_type)s',
+                      {"type": cd_type, "location": cd_location,
+                       "config_type": config_type})
             if self._get_config_drive_files(cd_type, cd_location):
                 return True
 

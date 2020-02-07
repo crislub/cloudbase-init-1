@@ -17,7 +17,9 @@ import abc
 import copy
 import gzip
 import io
+import json
 import time
+import yaml
 
 from oslo_log import log as oslo_logging
 import requests
@@ -32,6 +34,11 @@ LOG = oslo_logging.getLogger(__name__)
 
 
 class NotExistingMetadataException(Exception):
+    pass
+
+
+class YamlParserConfigError(Exception):
+    """Exception for Yaml parsing failures"""
     pass
 
 
@@ -260,6 +267,19 @@ class BaseMetadataService(object):
                 "meta_data": ds_meta_data,
             }
         }
+
+    @staticmethod
+    def _parse_data(raw_data):
+        """Parse data as json. Fallback to yaml if json parsing fails"""
+
+        try:
+            return json.loads(raw_data)
+        except (TypeError, ValueError, AttributeError):
+            loader = getattr(yaml, 'CLoader', yaml.Loader)
+            try:
+                return yaml.load(raw_data, Loader=loader)
+            except (TypeError, ValueError, AttributeError):
+                raise YamlParserConfigError("Invalid yaml data provided.")
 
 
 class BaseHTTPMetadataService(BaseMetadataService):

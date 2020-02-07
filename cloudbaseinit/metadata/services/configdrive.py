@@ -22,6 +22,7 @@ from cloudbaseinit import constant
 from cloudbaseinit import exception
 from cloudbaseinit.metadata.services import base
 from cloudbaseinit.metadata.services import baseopenstackservice
+from cloudbaseinit.metadata.services.osconfigdrive import base as basecd
 from cloudbaseinit.metadata.services.osconfigdrive import factory
 
 CONF = cloudbaseinit_conf.CONF
@@ -31,24 +32,32 @@ CD_TYPES = constant.CD_TYPES
 CD_LOCATIONS = constant.CD_LOCATIONS
 
 
-class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
+class BaseConfigDriveService(base.BaseMetadataService):
 
-    def __init__(self):
-        super(ConfigDriveService, self).__init__()
+    def __init__(self, config_type):
+        super(BaseConfigDriveService, self).__init__()
+        self._config_type = config_type
         self._metadata_path = None
+        self._searched_types = None
+        self._searched_locations = None
+
+    def _get_config_options(self):
+        return CONF.config_drive
 
     def _preprocess_options(self):
-        self._searched_types = set(CONF.config_drive.types)
-        self._searched_locations = set(CONF.config_drive.locations)
+        config_options = self._get_config_options()
+
+        self._searched_types = set(config_options.types)
+        self._searched_locations = set(config_options.locations)
 
         # Deprecation backward compatibility.
-        if CONF.config_drive.raw_hdd:
+        if config_options.raw_hdd:
             self._searched_types.add("iso")
             self._searched_locations.add("hdd")
-        if CONF.config_drive.cdrom:
+        if config_options.cdrom:
             self._searched_types.add("iso")
             self._searched_locations.add("cdrom")
-        if CONF.config_drive.vfat:
+        if config_options.vfat:
             self._searched_types.add("vfat")
             self._searched_locations.add("hdd")
 
@@ -61,17 +70,18 @@ class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
                 "Invalid Config Drive locations %s", self._searched_locations)
 
     def load(self):
-        super(ConfigDriveService, self).load()
+        super(BaseConfigDriveService, self).load()
 
         self._preprocess_options()
         self._mgr = factory.get_config_drive_manager()
         found = self._mgr.get_config_drive_files(
             searched_types=self._searched_types,
-            searched_locations=self._searched_locations)
+            searched_locations=self._searched_locations,
+            config_type=self._config_type)
 
         if found:
             self._metadata_path = self._mgr.target_path
-            LOG.debug('Metadata copied to folder: %r', self._metadata_path)
+            LOG.info('Metadata copied to folder: %r', self._metadata_path)
         return found
 
     def _get_data(self, path):
@@ -86,3 +96,47 @@ class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
         LOG.debug('Deleting metadata folder: %r', self._mgr.target_path)
         shutil.rmtree(self._mgr.target_path, ignore_errors=True)
         self._metadata_path = None
+
+
+class ConfigDriveService(BaseConfigDriveService,
+                         baseopenstackservice.BaseOpenStackService):
+
+    def __init__(self):
+        super(ConfigDriveService, self).__init__(
+            config_type=basecd.CONFIG_DRIVE)
+
+
+class NoCloudConfigDriveService(BaseConfigDriveService):
+
+    def __init__(self):
+        super(NoCloudConfigDriveService, self).__init__(
+            config_type=basecd.NOCLOUD_CONFIG_DRIVE)
+        self._meta_data = {}
+
+    def get_user_data(self):
+        return self._get_cache_data("user-data")
+
+    def _get_meta_data(self):
+        if self._meta_data:
+            return self._meta_data
+
+        raw_meta_data = self._get_cache_data("meta-data", decode=True)
+        try:
+            self._meta_data = self._parse_data(raw_meta_data)
+        except Exception:
+            LOG.warning("Metadata could not be parsed")
+
+        return self._meta_data
+
+    def get_host_name(self):
+        return self._get_meta_data().get('local-hostname')
+
+    def get_instance_id(self):
+        return self._get_meta_data().get('instance-id')
+
+    def get_public_keys(self):
+        raw_ssh_keys = self._get_meta_data().get('public-keys')
+        if not raw_ssh_keys:
+            return []
+
+        return [raw_ssh_keys[key].get('openssh-key') for key in raw_ssh_keys]

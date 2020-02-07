@@ -17,6 +17,9 @@ import tempfile
 
 import six
 
+CONFIG_DRIVE = "config_drive"
+NOCLOUD_CONFIG_DRIVE = "no_cloud_config_drive"
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseConfigDriveManager(object):
@@ -25,5 +28,6 @@ class BaseConfigDriveManager(object):
         self.target_path = tempfile.mkdtemp()
 
     @abc.abstractmethod
-    def get_config_drive_files(self, check_types=None, check_locations=None):
+    def get_config_drive_files(self, check_types=None, check_locations=None,
+                               config_type=CONFIG_DRIVE):
         pass

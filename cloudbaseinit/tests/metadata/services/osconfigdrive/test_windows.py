@@ -25,6 +25,7 @@ except ImportError:
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
+from cloudbaseinit.metadata.services.osconfigdrive import base
 from cloudbaseinit.tests import testutils
 
 
@@ -61,6 +62,7 @@ class TestWindowsConfigDriveManager(unittest.TestCase):
         self.osutils = mock.Mock()
         self._config_manager._osutils = self.osutils
         self.snatcher = testutils.LogSnatcher(module_path)
+        self._config_type = base.CONFIG_DRIVE
 
     @mock.patch('os.path.exists')
     def _test_check_for_config_drive(self, mock_exists, exists=True,
@@ -70,7 +72,10 @@ class TestWindowsConfigDriveManager(unittest.TestCase):
         mock_exists.return_value = exists
 
         with self.snatcher:
+            old_config_type = self._config_manager._config_type
+            self._config_manager._config_type = base.CONFIG_DRIVE
             response = self._config_manager._check_for_config_drive(drive)
+            self._config_manager._config_type = old_config_type
 
         self.osutils.get_volume_label.assert_called_once_with(drive)
         if exists and not fail:
@@ -384,8 +389,8 @@ class TestWindowsConfigDriveManager(unittest.TestCase):
 
     def _test__get_config_drive_files(self, cd_type, cd_location,
                                       func, found=True):
-        response = self._config_manager._get_config_drive_files(cd_type,
-                                                                cd_location)
+        response = self._config_manager._get_config_drive_files(
+            cd_type, cd_location)
         if found:
             if func:
                 func.assert_called_once_with()
@@ -450,18 +455,21 @@ class TestWindowsConfigDriveManager(unittest.TestCase):
                                      found=True):
         check_types = ["iso", "vfat"] if found else []
         check_locations = ["cdrom", "hdd", "partition"]
-        product = list(itertools.product(check_types, check_locations))
+        product = list(itertools.product(check_types, check_locations,
+                                         [base.CONFIG_DRIVE]))
         product_calls = [mock.call(cd_type, cd_location)
-                         for cd_type, cd_location in product]
+                         for cd_type, cd_location, _ in product]
         mock_get_config_drive_files.side_effect = \
             [False] * (len(product_calls) - 1) + [True]
-        expected_log = ["Looking for Config Drive %(type)s in %(location)s" %
-                        {"type": cd_type, "location": cd_location}
-                        for cd_type, cd_location in product]
+        expected_log = [("Looking for Config Drive %(type)s in %(location)s"
+                         " with config type %(config_type)s") %
+                        {"type": cd_type, "location": cd_location,
+                         "config_type": config_type}
+                        for cd_type, cd_location, config_type in product]
 
         with self.snatcher:
             response = self._config_manager.get_config_drive_files(
-                check_types, check_locations)
+                check_types, check_locations, base.CONFIG_DRIVE)
         mock_get_config_drive_files.assert_has_calls(product_calls)
         self.assertEqual(expected_log, self.snatcher.output)
         self.assertEqual(found, response)
