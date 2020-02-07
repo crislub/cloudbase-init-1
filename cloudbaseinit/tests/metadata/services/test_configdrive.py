@@ -23,13 +23,15 @@ except ImportError:
     import mock
 
 from cloudbaseinit import exception
+from cloudbaseinit.metadata.services import configdrive
 from cloudbaseinit.tests import testutils
+
+MODULE_PATH = "cloudbaseinit.metadata.services.configdrive"
 
 
 class TestConfigDriveService(unittest.TestCase):
 
     def setUp(self):
-        module_path = "cloudbaseinit.metadata.services.configdrive"
         self._win32com_mock = mock.MagicMock()
         self._ctypes_mock = mock.MagicMock()
         self._ctypes_util_mock = mock.MagicMock()
@@ -46,9 +48,9 @@ class TestConfigDriveService(unittest.TestCase):
         self._module_patcher.start()
         self.addCleanup(self._module_patcher.stop)
 
-        self.configdrive_module = importlib.import_module(module_path)
+        self.configdrive_module = importlib.import_module(MODULE_PATH)
         self._config_drive = self.configdrive_module.ConfigDriveService()
-        self.snatcher = testutils.LogSnatcher(module_path)
+        self.snatcher = testutils.LogSnatcher(MODULE_PATH)
 
     def _test_preprocess_options(self, fail=False):
         if fail:
@@ -94,17 +96,15 @@ class TestConfigDriveService(unittest.TestCase):
         fake_path = "fake\\fake_id"
         mock_manager.target_path = fake_path
         mock_get_config_drive_manager.return_value = mock_manager
-        expected_log = [
-            "Metadata copied to folder: %r" % fake_path]
 
-        with self.snatcher:
-            response = self._config_drive.load()
+        response = self._config_drive.load()
 
         mock_get_config_drive_manager.assert_called_once_with()
         mock_manager.get_config_drive_files.assert_called_once_with(
-            searched_types=self.configdrive_module.CD_TYPES,
-            searched_locations=self.configdrive_module.CD_LOCATIONS)
-        self.assertEqual(expected_log, self.snatcher.output)
+            drive_label='config-2',
+            metadata_file='openstack\\latest\\meta_data.json',
+            searched_types=configdrive.CD_TYPES,
+            searched_locations=configdrive.CD_LOCATIONS)
         self.assertTrue(response)
         self.assertEqual(fake_path, self._config_drive._metadata_path)
 
@@ -127,10 +127,7 @@ class TestConfigDriveService(unittest.TestCase):
         mock_mgr = mock.Mock()
         self._config_drive._mgr = mock_mgr
         mock_mgr.target_path = fake_path
-        with self.snatcher:
-            self._config_drive.cleanup()
-        self.assertEqual(["Deleting metadata folder: %r" % fake_path],
-                         self.snatcher.output)
+        self._config_drive.cleanup()
         mock_rmtree.assert_called_once_with(fake_path,
                                             ignore_errors=True)
         self.assertEqual(None, self._config_drive._metadata_path)

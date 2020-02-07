@@ -24,6 +24,7 @@ from cloudbaseinit.metadata.services import base
 from cloudbaseinit.metadata.services import baseopenstackservice
 from cloudbaseinit.metadata.services.osconfigdrive import factory
 
+
 CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
@@ -31,11 +32,15 @@ CD_TYPES = constant.CD_TYPES
 CD_LOCATIONS = constant.CD_LOCATIONS
 
 
-class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
+class BaseConfigDriveService(base.BaseMetadataService):
 
-    def __init__(self):
-        super(ConfigDriveService, self).__init__()
+    def __init__(self, drive_label, metadata_file):
+        super(BaseConfigDriveService, self).__init__()
+        self._drive_label = drive_label
+        self._metadata_file = metadata_file
         self._metadata_path = None
+        self._searched_types = set()
+        self._searched_locations = set()
 
     def _preprocess_options(self):
         self._searched_types = set(CONF.config_drive.types)
@@ -61,11 +66,13 @@ class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
                 "Invalid Config Drive locations %s", self._searched_locations)
 
     def load(self):
-        super(ConfigDriveService, self).load()
+        super(BaseConfigDriveService, self).load()
 
         self._preprocess_options()
         self._mgr = factory.get_config_drive_manager()
         found = self._mgr.get_config_drive_files(
+            drive_label=self._drive_label,
+            metadata_file=self._metadata_file,
             searched_types=self._searched_types,
             searched_locations=self._searched_locations)
 
@@ -86,3 +93,11 @@ class ConfigDriveService(baseopenstackservice.BaseOpenStackService):
         LOG.debug('Deleting metadata folder: %r', self._mgr.target_path)
         shutil.rmtree(self._mgr.target_path, ignore_errors=True)
         self._metadata_path = None
+
+
+class ConfigDriveService(BaseConfigDriveService,
+                         baseopenstackservice.BaseOpenStackService):
+
+    def __init__(self):
+        super(ConfigDriveService, self).__init__(
+            'config-2', 'openstack\\latest\\meta_data.json')
