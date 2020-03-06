@@ -50,19 +50,19 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
         self._osutils = osutils_factory.get_os_utils()
 
     def _meta_data_file_exists(self, drive, metadata_file):
-        metadata_path = os.path.join(drive, metadata_file)
+        metadata_file = os.path.join(drive, metadata_file)
 
-        if os.path.exists(metadata_path):
+        if os.path.exists(metadata_file):
             return True
 
-        LOG.debug('%s not found', metadata_path)
+        LOG.debug('%s not found', metadata_file)
         return False
 
     def _check_for_config_drive(self, drive, required_drive_label,
-                                metadata_path):
+                                metadata_file):
         label = self._osutils.get_volume_label(drive)
         if label and label.lower() == required_drive_label and \
-                self._meta_data_file_exists(drive, metadata_path):
+                self._meta_data_file_exists(drive, metadata_file):
             LOG.info('Config Drive found on %s', drive)
             return True
         LOG.debug("Looking for a Config Drive with label '%s' on '%s'. "
@@ -143,21 +143,21 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
             os.remove(iso_file_path)
         return extracted
 
-    def _get_config_drive_from_cdrom_drive(self, drive_label, metadata_path):
+    def _get_config_drive_from_cdrom_drive(self, drive_label, metadata_file):
         for drive_letter in self._osutils.get_cdrom_drives():
             if self._check_for_config_drive(drive_letter, drive_label,
-                                            metadata_path):
+                                            metadata_file):
                 os.rmdir(self.target_path)
                 shutil.copytree(drive_letter, self.target_path)
                 return True
 
         return False
 
-    def _get_config_drive_from_raw_hdd(self, drive_label, metadata_path):
+    def _get_config_drive_from_raw_hdd(self, drive_label, metadata_file):
         disks = map(disk.Disk, self._osutils.get_physical_disks())
         return self._extract_iso_from_devices(disks)
 
-    def _get_config_drive_from_vfat(self, drive_label, metadata_path):
+    def _get_config_drive_from_vfat(self, drive_label, metadata_file):
         for drive_path in self._osutils.get_physical_disks():
             if vfat.is_vfat_drive(self._osutils, drive_path):
                 LOG.info('Config Drive found on disk %r', drive_path)
@@ -166,7 +166,7 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
                 return True
         return False
 
-    def _get_config_drive_from_partition(self, drive_label, metadata_path):
+    def _get_config_drive_from_partition(self, drive_label, metadata_file):
         for disk_path in self._osutils.get_physical_disks():
             physical_drive = disk.Disk(disk_path)
             with physical_drive:
@@ -176,24 +176,24 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
                 return True
         return False
 
-    def _get_config_drive_from_volume(self, drive_label, metadata_path):
+    def _get_config_drive_from_volume(self, drive_label, metadata_file):
         """Look through all the volumes for config drive."""
         volumes = self._osutils.get_volumes()
         for volume in volumes:
             if self._check_for_config_drive(volume, drive_label,
-                                            metadata_path):
+                                            metadata_file):
                 os.rmdir(self.target_path)
                 shutil.copytree(volume, self.target_path)
                 return True
         return False
 
-    def _get_config_drive_files(self, drive_label, metadata_path,
+    def _get_config_drive_files(self, drive_label, metadata_file,
                                 cd_type, cd_location):
         try:
             get_config_drive = self.config_drive_type_location.get(
                 "{}_{}".format(cd_location, cd_type))
             if get_config_drive:
-                return get_config_drive(drive_label, metadata_path)
+                return get_config_drive(drive_label, metadata_file)
             else:
                 LOG.debug("Irrelevant type %(type)s in %(location)s "
                           "location; skip",
@@ -205,7 +205,7 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
 
         return False
 
-    def get_config_drive_files(self, drive_label, metadata_path,
+    def get_config_drive_files(self, drive_label, metadata_file,
                                searched_types=None, searched_locations=None):
         searched_types = searched_types or []
         searched_locations = searched_locations or []
@@ -216,7 +216,7 @@ class WindowsConfigDriveManager(base.BaseConfigDriveManager):
                       'with expected label %(drive_label)s',
                       {"type": cd_type, "location": cd_location,
                        "drive_label": drive_label})
-            if self._get_config_drive_files(drive_label, metadata_path,
+            if self._get_config_drive_files(drive_label, metadata_file,
                                             cd_type, cd_location):
                 return True
 
