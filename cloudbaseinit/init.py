@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import functools
 import os
 import sys
@@ -22,6 +23,7 @@ from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
 from cloudbaseinit.metadata import factory as metadata_factory
 from cloudbaseinit.osutils import factory as osutils_factory
+from cloudbaseinit.platforms import factory as platforms_factory
 from cloudbaseinit.plugins.common import base as plugins_base
 from cloudbaseinit.plugins import factory as plugins_factory
 from cloudbaseinit.utils import log as logging
@@ -102,7 +104,17 @@ class InitManager(object):
                 LOG.info, 'Found new version of cloudbase-init %s')
             version.check_latest_version(log_version)
 
-    def _handle_plugins_stage(self, osutils, service, instance_id, stage):
+    def _run_with_platform_hook(self, platform, stage, plugin, function):
+        out, exc, start_time, end_time = self._eval_and_log_time(function)
+
+        try:
+            platform.execute_hook(stage, plugin, exc, start_time, end_time)
+        except Exception as ex:
+            LOG.exception(ex)
+        return out
+
+    def _handle_plugins_stage(self, osutils, service, instance_id, stage,
+                              platform):
         plugins_shared_data = {}
         reboot_required = False
         stage_success = True
@@ -112,9 +124,12 @@ class InitManager(object):
 
         for plugin in plugins:
             if self._check_plugin_os_requirements(osutils, plugin):
-                success, reboot_required = self._exec_plugin(
-                    osutils, service, plugin, instance_id,
-                    plugins_shared_data)
+                success, reboot_required = self._run_with_platform_hook(
+                    platform, stage, plugin,
+                    lambda: self._exec_plugin(osutils, service, plugin,
+                                              instance_id,
+                                              plugins_shared_data))
+
                 if not success:
                     stage_success = False
                 if reboot_required and CONF.allow_reboot:
@@ -164,6 +179,23 @@ class InitManager(object):
         LOG.info("Process execution ended with exit code: %s", exit_code)
         sys.exit(exit_code)
 
+    @staticmethod
+    def _eval_and_log_time(function, raise_exception=False):
+        output = None
+        exception = None
+
+        start_time = datetime.datetime.utcnow()
+        try:
+            output = function()
+        except Exception as ex:
+            if raise_exception:
+                raise
+            exception = ex
+        finally:
+            end_time = datetime.datetime.utcnow()
+
+        return (output, exception, start_time, end_time)
+
     def configure_host(self):
         service = None
         osutils = osutils_factory.get_os_utils()
@@ -171,19 +203,22 @@ class InitManager(object):
         if CONF.reset_service_password and sys.platform == 'win32':
             self._reset_service_password_and_respawn(osutils)
 
+        platform = platforms_factory.load_platform()
+        platform.initialize()
+
         LOG.info('Cloudbase-Init version: %s', version.get_version())
         osutils.wait_for_boot_completion()
 
         stage_success, reboot_required = self._handle_plugins_stage(
             osutils, None, None,
-            plugins_base.PLUGIN_STAGE_PRE_NETWORKING)
+            plugins_base.PLUGIN_STAGE_PRE_NETWORKING, platform)
 
         self._check_latest_version()
 
         if not (reboot_required and CONF.allow_reboot):
             stage_success, reboot_required = self._handle_plugins_stage(
                 osutils, None, None,
-                plugins_base.PLUGIN_STAGE_PRE_METADATA_DISCOVERY)
+                plugins_base.PLUGIN_STAGE_PRE_METADATA_DISCOVERY, platform)
 
         if not (reboot_required and CONF.allow_reboot):
             try:
@@ -196,7 +231,9 @@ class InitManager(object):
 
             if CONF.metadata_report_provisioning_started:
                 LOG.info("Reporting provisioning started")
-                service.provisioning_started()
+                self._eval_and_log_time(
+                    lambda: service.provisioning_started(),
+                    raise_exception=True)
 
             instance_id = service.get_instance_id()
             LOG.debug('Instance id: %s', instance_id)
@@ -204,7 +241,7 @@ class InitManager(object):
             try:
                 stage_success, reboot_required = self._handle_plugins_stage(
                     osutils, service, instance_id,
-                    plugins_base.PLUGIN_STAGE_MAIN)
+                    plugins_base.PLUGIN_STAGE_MAIN, platform)
             finally:
                 service.cleanup()
 
@@ -212,14 +249,16 @@ class InitManager(object):
                     not stage_success):
                 try:
                     LOG.info("Reporting provisioning failed")
-                    service.provisioning_failed()
+                    self._eval_and_log_time(
+                        lambda: service.provisioning_failed(),
+                        raise_exception=True)
                 except Exception as ex:
                     LOG.exception(ex)
 
         if reboot_required and CONF.allow_reboot:
             try:
                 LOG.info("Rebooting")
-                osutils.reboot()
+                self._eval_and_log_time(lambda: osutils.reboot())
             except Exception as ex:
                 LOG.error('reboot failed with error \'%s\'' % ex)
         else:
@@ -229,7 +268,9 @@ class InitManager(object):
                     stage_success):
                 try:
                     LOG.info("Reporting provisioning completed")
-                    service.provisioning_completed()
+                    self._eval_and_log_time(
+                        lambda: service.provisioning_completed(),
+                        raise_exception=True)
                 except Exception as ex:
                     LOG.exception(ex)
 

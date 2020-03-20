@@ -28,6 +28,13 @@ from cloudbaseinit.tests import testutils
 CONF = cloudbaseinit_conf.CONF
 
 
+def Any(cls):
+    class Any(cls):
+        def __eq__(self, other):
+            return True
+    return Any()
+
+
 class TestInitManager(unittest.TestCase):
 
     def setUp(self):
@@ -179,30 +186,31 @@ class TestInitManager(unittest.TestCase):
         self.assertFalse(response)
 
     @mock.patch('cloudbaseinit.init.InitManager.'
-                '_exec_plugin')
+                '_run_with_platform_hook')
     @mock.patch('cloudbaseinit.init.InitManager.'
                 '_check_plugin_os_requirements')
     @mock.patch('cloudbaseinit.plugins.factory.load_plugins')
     def _test_handle_plugins_stage(self, mock_load_plugins,
                                    mock_check_plugin_os_requirements,
-                                   mock_exec_plugin,
+                                   mock_run_with_platform_hook,
                                    reboot=True, fast_reboot=True,
                                    success=True):
         stage = "fake stage"
+        platform = mock.MagicMock()
+        platform.execute_hook = (
+            lambda plugin, exc, start_time, end_time: plugin)
         service, instance_id = mock.Mock(), mock.Mock()
         plugins = [mock.Mock() for _ in range(3)]
         mock_check_plugin_os_requirements.return_value = True
-        mock_exec_plugin.return_value = success, reboot
+        mock_run_with_platform_hook.return_value = success, reboot
         mock_load_plugins.return_value = plugins
         requirements_calls = [mock.call(self.osutils, plugin)
                               for plugin in plugins]
-        exec_plugin_calls = [mock.call(self.osutils, service, plugin,
-                                       instance_id, {})
-                             for plugin in plugins]
-
+        run_with_platform_call = [mock.call(platform, stage, plugin, mock.ANY)
+                                  for plugin in plugins]
         with testutils.LogSnatcher('cloudbaseinit.init') as snatcher:
             response = self._init._handle_plugins_stage(
-                self.osutils, service, instance_id, stage)
+                self.osutils, service, instance_id, stage, platform)
         self.assertEqual(
             ["Executing plugins for stage '{}':".format(stage)],
             snatcher.output)
@@ -210,7 +218,8 @@ class TestInitManager(unittest.TestCase):
         idx = 1 if (reboot and fast_reboot) else len(plugins)
         mock_check_plugin_os_requirements.assert_has_calls(
             requirements_calls[:idx])
-        mock_exec_plugin.assert_has_calls(exec_plugin_calls[:idx])
+        mock_run_with_platform_hook.assert_has_calls(
+            run_with_platform_call[:idx])
         self.assertEqual((success, reboot), response)
 
     def test_handle_plugins_stage(self):
@@ -235,7 +244,9 @@ class TestInitManager(unittest.TestCase):
     @mock.patch('cloudbaseinit.plugins.factory.load_plugins')
     @mock.patch('cloudbaseinit.osutils.factory.get_os_utils')
     @mock.patch('cloudbaseinit.metadata.factory.get_metadata_service')
-    def _test_configure_host(self, mock_get_metadata_service,
+    @mock.patch('cloudbaseinit.platforms.factory.load_platform')
+    def _test_configure_host(self, mock_load_platform,
+                             mock_get_metadata_service,
                              mock_get_os_utils, mock_load_plugins,
                              mock_get_version, mock_check_latest_version,
                              mock_handle_plugins_stage, mock_reset_service,
@@ -243,12 +254,15 @@ class TestInitManager(unittest.TestCase):
                              version, name, instance_id, reboot=True,
                              last_stage=False):
         sys.platform = 'win32'
+        fake_platform = mock.MagicMock
+        fake_platform.initialize = lambda: None
         mock_get_version.return_value = version
         fake_service = mock.MagicMock()
         fake_plugin = mock.MagicMock()
         mock_load_plugins.return_value = [fake_plugin]
         mock_get_os_utils.return_value = self.osutils
         mock_get_metadata_service.return_value = fake_service
+        mock_load_platform.return_value = fake_platform
         fake_service.get_name.return_value = name
         fake_service.get_instance_id.return_value = instance_id
         mock_handle_plugins_stage.side_effect = [(True, False), (True, False),
@@ -257,7 +271,7 @@ class TestInitManager(unittest.TestCase):
             base.PLUGIN_STAGE_PRE_NETWORKING,
             base.PLUGIN_STAGE_PRE_METADATA_DISCOVERY,
             base.PLUGIN_STAGE_MAIN]
-        stage_calls_list = [[self.osutils, None, None, stage]
+        stage_calls_list = [[self.osutils, None, None, stage, fake_platform]
                             for stage in stages]
         stage_calls_list[2][1] = fake_service
         stage_calls_list[2][2] = instance_id
