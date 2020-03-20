@@ -29,13 +29,13 @@ from cloudbaseinit.plugins import factory as plugins_factory
 from cloudbaseinit.utils import log as logging
 from cloudbaseinit import version
 
-
 CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
 
 class InitManager(object):
     _PLUGINS_CONFIG_SECTION = 'Plugins'
+    _DATETIME_FORMAT_STR = "%Y-%m-%dT%H:%M:%SZ"
 
     def _get_plugins_section(self, instance_id):
         if not instance_id:
@@ -106,9 +106,17 @@ class InitManager(object):
 
     def _run_with_platform_hook(self, platform, stage, plugin, function):
         out, exc, start_time, end_time = self._eval_and_log_time(function)
+        LOG.debug("Stage=%s;"
+                  "Plugin=%s;"
+                  "Called=%s;"
+                  "Returned=%s;",
+                  stage, plugin.get_name(),
+                  start_time.strftime(self._DATETIME_FORMAT_STR),
+                  end_time.strftime(self._DATETIME_FORMAT_STR))
 
         try:
-            platform.execute_hook(stage, plugin, exc, start_time, end_time)
+            platform.execute_hook(stage, plugin.get_name(), exc,
+                                  start_time, end_time)
         except Exception as ex:
             LOG.exception(ex)
         return out

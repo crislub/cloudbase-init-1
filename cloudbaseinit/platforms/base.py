@@ -12,11 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
-import six
 
-
-@six.add_metaclass(abc.ABCMeta)
 class BasePlatform(object):
     name = 'BasePlatform'
 
