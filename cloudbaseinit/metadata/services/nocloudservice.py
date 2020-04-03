@@ -42,7 +42,7 @@ class NoCloudConfigDriveService(baseconfigdrive.BaseConfigDriveService):
         raw_meta_data = self._get_cache_data("meta-data", decode=True)
         try:
             self._meta_data = (
-                serialization.parse_json_yaml_data(raw_meta_data))
+                serialization.parse_json_yaml(raw_meta_data))
         except base.YamlParserConfigError as ex:
             LOG.error("Metadata could not be parsed")
             LOG.exception(ex)
