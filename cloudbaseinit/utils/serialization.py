@@ -12,19 +12,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as oslo_logging
-
-from cloudbaseinit import conf as cloudbaseinit_conf
-from cloudbaseinit.metadata.services import baseconfigdrive
-from cloudbaseinit.metadata.services import baseopenstackservice
-
-CONF = cloudbaseinit_conf.CONF
-LOG = oslo_logging.getLogger(__name__)
+import json
+import yaml
 
 
-class ConfigDriveService(baseconfigdrive.BaseConfigDriveService,
-                         baseopenstackservice.BaseOpenStackService):
+class YamlParserConfigError(Exception):
+    """Exception for Yaml parsing failures"""
+    pass
 
-    def __init__(self):
-        super(ConfigDriveService, self).__init__(
-            'config-2', 'openstack\\latest\\meta_data.json')
+
+def parse_json_yaml(raw_data):
+    """Parse data as json. Fallback to yaml if json parsing fails"""
+
+    try:
+        return json.loads(raw_data)
+    except (TypeError, ValueError, AttributeError):
+        loader = getattr(yaml, 'CLoader', yaml.Loader)
+        try:
+            return yaml.load(raw_data, Loader=loader)
+        except (TypeError, ValueError, AttributeError):
+            raise YamlParserConfigError("Invalid yaml data provided.")
