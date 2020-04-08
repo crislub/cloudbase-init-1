@@ -57,6 +57,10 @@ class BaseOSUtils(object):
     def rename_user(self, username, new_username):
         raise NotImplementedError()
 
+    def set_user_info(self, username, full_name=None,
+                      disabled=False, expire_interval=None):
+        raise NotImplementedError()
+
     def enum_users(self):
         raise NotImplementedError()
 
@@ -67,6 +71,12 @@ class BaseOSUtils(object):
         raise NotImplementedError()
 
     def add_user_to_local_group(self, username, groupname):
+        raise NotImplementedError()
+
+    def group_exists(self, group):
+        raise NotImplementedError()
+
+    def create_group(self, group, description=None):
         raise NotImplementedError()
 
     def set_host_name(self, new_host_name):
@@ -208,4 +218,11 @@ class BaseOSUtils(object):
         raise NotImplementedError()
 
     def take_path_ownership(self, path, username=None):
+        raise NotImplementedError()
+
+    def get_default_script_exec_header(self):
+        """File header where the cloud-config runcmd will be aggregated.
+
+           Example: `#!/bin/bash` for bash or `rem cmd` for cmd.
+        """
         raise NotImplementedError()

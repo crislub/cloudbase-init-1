@@ -35,8 +35,7 @@ environment variable).
 
 PowerShell
 ----------
-
-**#ps1_sysnative** (system native)
+**#ps1** or **#ps1_sysnative** (system native)
 
 **#ps1_x86** (Windows On Windows 32bit)
 
@@ -108,9 +107,7 @@ The following cloud-config directives are supported:
 
     *Examples:*
 
-    .. code-block:: xml
-
-        # One item
+    .. code-block:: yaml
 
         #cloud-config
         write_files:
@@ -119,9 +116,7 @@ The following cloud-config directives are supported:
            path: C:\test
            permissions: '0o466'
 
-    .. code-block:: xml
-
-        # Multiple items
+    .. code-block:: yaml
 
         #cloud-config
         write_files:
@@ -143,17 +138,123 @@ The following cloud-config directives are supported:
 
     *Example:*
 
-    .. code-block:: text
+    .. code-block:: yaml
 
+        #cloud-config
         set_timezone: Asia/Tbilisi
 
-* set_hostname - Override the already default set host name value. (metadata)
+* set_hostname - Override the already default set hostname value (taken from metadata).
+
+    If the hostname is changed, a reboot will be required.
 
     *Example:*
 
-    .. code-block:: text
+    .. code-block:: yaml
 
+        #cloud-config
         set_hostname: newhostname
+
+* groups - Create local groups and add existing users to those local groups.
+
+    The definition of the groups consists of a list in the format:
+
+        <group_name>: [<user1>, <user2>]
+
+    The list of users can be empty, when creating a group without members.
+
+    *Example:*
+
+    .. code-block:: yaml
+
+        groups:
+          - windows-group: [user1, user2]
+          - cloud-users
+
+* users - Create and configure local users.
+
+    The users are defined as a list. Each element from the list represents a user.
+    Each user can have the the following attributes defined:
+
+        1. name - The username (required string).
+        2. gecos - the user description.
+        3. primary_group - the user's primary group.
+        4. groups - the user's groups. On Windows, primary_group and groups are concatenated.
+        5. passwd - the user's password. On Linux, the password is a hashed string,
+           whereas on Windows the password is a plaintext string.
+           If the password is not defined, a random password will be set.
+        6. inactive - boolean value, defaults to False. If set to True, the user will
+           be disabled.
+        7. expiredate - a string in the format <year>-<month>-<day>. Example: 2020-10-01.
+        8. ssh_authorized_keys - a list of SSH public keys, that will be set in
+           ~/.ssh/authorized_keys.
+
+    *Example:*
+
+    .. code-block:: yaml
+
+        users:
+          -
+            name: Admin
+          -
+            name: brian
+            gecos: 'Brian Cohen'
+            primary_group: Users
+            groups: cloud-users
+            passwd: StrongPassw0rd
+            inactive: False
+            expiredate: 2020-10-01
+            ssh_authorized_keys:
+              - ssh-rsa AAAB...byV
+              - ssh-rsa AAAB...ctV
+
+
+* ntp - Set NTP servers. The definition is a dict with the following attributes:
+
+    1. enabled - Boolean value, defaults to True, to enable or disable the NTP config.
+    2. servers - A list of NTP servers.
+    3. pools - A list of NTP pools.
+
+    The servers and pools are aggregated, servers being the first ones in the list.
+    On Windows, there is no difference between an NTP pool or server.
+
+    *Example:*
+
+    .. code-block:: yaml
+
+        #cloud-config
+        ntp:
+          enabled: True
+          servers: ['my.ntp.server.local', '192.168.23.2']
+          pools: ['0.company.pool.ntp.org', '1.company.pool.ntp.org']
+
+
+* runcmd - Directive that can contain a list of commands that will be executed,
+  in the order of their definition.
+
+    A command can be defined as a string or as a list of strings,
+    the first one being the executable path.
+
+    On Windows, the commands are aggregated into a file and executed with *cmd.exe*.
+    The userdata exit codes can be used to request a reboot: :ref:`file execution`.
+
+    *Example:*
+
+    .. code-block:: yaml
+
+        #cloud-config
+        runcmd:
+          - 'dir C:\\'
+          - ['echo', '1']
+
+
+The cloud-config directives are executed by default in the following order: write_files,
+set_timezone, set_hostname, ntp, groups, users, runcmd. Use config option `cloud_config_plugins`
+to filter or to change the order of the cloud config plugins.
+
+The execution of set_hostname or runcmd can request a reboot if needed. The reboot
+is performed at the end of the cloud-config execution (after all the directives have been
+executed).
+
 
 
 Multi-part content

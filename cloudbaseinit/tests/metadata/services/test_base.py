@@ -61,6 +61,38 @@ class TestBase(unittest.TestCase):
         result = self._service.get_user_pwd_encryption_key()
         self.assertEqual(result, mock_get_public_keys.return_value[0])
 
+    @mock.patch('cloudbaseinit.metadata.services.base.'
+                'BaseMetadataService.get_public_keys')
+    @mock.patch('cloudbaseinit.metadata.services.base.'
+                'BaseMetadataService.get_host_name')
+    @mock.patch('cloudbaseinit.metadata.services.base.'
+                'BaseMetadataService.get_instance_id')
+    def test_get_instance_data(self, mock_instance_id, mock_hostname,
+                               mock_public_keys):
+        fake_instance_id = 'id'
+        mock_instance_id.return_value = fake_instance_id
+        fake_hostname = 'host'
+        mock_hostname.return_value = fake_hostname
+        fake_keys = ['ssh1', 'ssh2']
+        mock_public_keys.return_value = fake_keys
+
+        expected_response = {
+            'v1': {
+                "instance_id": fake_instance_id,
+                "local_hostname": fake_hostname,
+                "public_ssh_keys": fake_keys
+            },
+            'ds': {
+                'meta_data': {
+                    "instance_id": fake_instance_id,
+                    "local_hostname": fake_hostname,
+                    "public_ssh_keys": fake_keys,
+                    "hostname": fake_hostname
+                },
+            }
+        }
+        self.assertEqual(expected_response, self._service.get_instance_data())
+
 
 class TestBaseHTTPMetadataService(unittest.TestCase):
 
@@ -183,3 +215,27 @@ class TestBaseHTTPMetadataService(unittest.TestCase):
         ssl_error = requests.exceptions.SSLError()
         self._test_get_data(expected_response=ssl_error,
                             expected_value=exception.CertificateVerifyFailed)
+
+
+class TestEmptyMetadataService(unittest.TestCase):
+
+    def setUp(self):
+        self._service = base.EmptyMetadataService()
+
+    def test_get_name(self):
+        self.assertEqual(self._service.get_name(), 'EmptyMetadataService')
+
+    def test__get_data(self):
+        self.assertFalse(self._service._get_data('fake_path'))
+
+    def test_get_admin_username(self):
+        self.assertRaises(base.NotExistingMetadataException,
+                          self._service.get_admin_username)
+
+    def test_get_admin_password(self):
+        self.assertRaises(base.NotExistingMetadataException,
+                          self._service.get_admin_password)
+
+    def test_is_password_changed(self):
+        self.assertRaises(base.NotExistingMetadataException,
+                          self._service.is_password_changed)
