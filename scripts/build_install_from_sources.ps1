@@ -4,7 +4,6 @@ param(
     [string]$PyWin32RepoUrl="https://github.com/mhammond/pywin32",
     [string]$PyMiRepoUrl="https://github.com/cloudbase/PyMI",
     [string]$EmbeddedPythonVersion="3.7.7",
-    [string]$ComtypesUrl="https://github.com/enthought/comtypes",
     [string]$SetuptoolsUrl="https://github.com/pypa/setuptools",
     [string]$PipSourceUrl="https://github.com/pypa/pip/archive/20.0.2.tar.gz",
     [string]$WheelSourceUrl="https://github.com/pypa/wheel/archive/0.34.2.tar.gz",
@@ -291,7 +290,7 @@ function Setup-EmbeddedPythonEnvironment {
 
     $EmbeddedPythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/python-${EmbeddedPythonVersion}-embed-amd64.zip"
     $SourcePythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/Python-${EmbeddedPythonVersion}.tgz"
-    $pythonVersionHeader = "python37"
+    $pythonVersionHeader = "python" + (($EmbeddedPythonVersion.split(".") | Select-Object -First 2) -Join  "")
 
     $embeddedPythonDir = "$BuildDir\embedded-python"
     Download-File $EmbeddedPythonUrl "${embeddedPythonDir}.zip"
