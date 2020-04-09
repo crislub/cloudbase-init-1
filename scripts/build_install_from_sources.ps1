@@ -371,7 +371,7 @@ try {
     Set-VCVars -Version "14.0"
 
     # Setup pip upper requirements
-    # Setup-PythonPip
+    Setup-PythonPip
 
     if ($EmbeddedPythonVersion) {
         Setup-EmbeddedPythonEnvironment $EmbeddedPythonVersion
