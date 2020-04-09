@@ -122,15 +122,16 @@ function Install-PythonRequirements {
 
     Write-Host "Installing Python requirements from ${SourcePath}"
 
-    $extraPipArgs = ""
+    $cmdArgs = @("-m", "pip", "install")
     if ($BuildWithoutBinaries) {
-        $extraPipArgs = $PIP_BUILD_NO_BINARIES_ARGS
+        $cmdArgs += $PIP_BUILD_NO_BINARIES_ARGS
     }
+    $cmdArgs += @("-r", ".\requirements.txt")
 
     Run-CmdWithRetry {
         try {
             Push-Location (Join-Path $BuildDir $SourcePath)
-            Run-Command -Cmd "python" -Arguments @("-m", "pip", "install", $extraPipArgs, "-r", ".\requirements.txt")
+            Run-Command -Cmd "python" -Arguments $cmdArgs
         } finally {
             Pop-Location
         }
@@ -144,15 +145,16 @@ function Install-PythonPackage {
 
     Write-Host "Installing Python package from ${SourcePath}"
 
-    $extraPipArgs = ""
+    $cmdArgs = @("-m", "pip", "install")
     if ($BuildWithoutBinaries) {
-        $extraPipArgs = $PIP_BUILD_NO_BINARIES_ARGS
+        $cmdArgs += $PIP_BUILD_NO_BINARIES_ARGS
     }
+    $cmdArgs += "."
 
     Run-CmdWithRetry {
         try {
             Push-Location (Join-Path $BuildDir $SourcePath)
-            Run-Command -Cmd "python" -Arguments @("-m", "pip", "install", $extraPipArgs, ".")
+            Run-Command -Cmd "python" -Arguments $cmdArgs
         } finally {
             Pop-Location
         }
