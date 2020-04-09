@@ -291,6 +291,7 @@ function Setup-EmbeddedPythonEnvironment {
 
     $EmbeddedPythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/python-${EmbeddedPythonVersion}-embed-amd64.zip"
     $SourcePythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/Python-${EmbeddedPythonVersion}.tgz"
+    $pythonVersionHeader = "python37"
 
     $embeddedPythonDir = "$BuildDir\embedded-python"
     Download-File $EmbeddedPythonUrl "${embeddedPythonDir}.zip"
@@ -306,21 +307,21 @@ function Setup-EmbeddedPythonEnvironment {
     New-Item -Type Directory -Path "$sourcePythonDir\src"
     Expand-Archive "${sourcePythonDir}\source-python.tar" "$sourcePythonDir\src"
     Remove-Item -Force -Recurse "${sourcePythonDir}\source-python.tar"
-    $sourcePythonDir = "${sourcePythonDir}\src\Python-3.7.7"
+    $sourcePythonDir = "${sourcePythonDir}\src\Python-${EmbeddedPythonVersion}"
 
-    Remove-Item -Force "${embeddedPythonDir}\python37._pth"
+    Remove-Item -Force "${embeddedPythonDir}\${pythonVersionHeader}._pth"
 
     New-Item -Type Directory -Path "${embeddedPythonDir}\Lib"
-    Expand-Archive "${embeddedPythonDir}\python37.zip" "${embeddedPythonDir}\Lib"
-    Remove-Item -Force "${embeddedPythonDir}\python37.zip"
+    Expand-Archive "${embeddedPythonDir}\${pythonVersionHeader}.zip" "${embeddedPythonDir}\Lib"
+    Remove-Item -Force "${embeddedPythonDir}\${pythonVersionHeader}.zip"
 
     Copy-Item -Recurse -Force "${sourcePythonDir}\Include" "${embeddedPythonDir}\"
     Copy-Item -Recurse -Force "${sourcePythonDir}\PC\pyconfig.h" "${embeddedPythonDir}\Include\"
 
     New-Item -Type Directory -Path "${embeddedPythonDir}\libs\"
     # TODO: Needs to be replaced with the creation of lib from dll
-    Download-File "https://github.com/LuxCoreRender/WindowsCompileDeps/raw/master/x64/Release/lib/python37.lib" `
-        "${embeddedPythonDir}\libs\python37.lib"
+    Download-File "https://github.com/LuxCoreRender/WindowsCompileDeps/raw/master/x64/Release/lib/${pythonVersionHeader}.lib" `
+        "${embeddedPythonDir}\libs\${pythonVersionHeader}.lib"
 
     $env:path = "${embeddedPythonDir};${embeddedPythonDir}\scripts;" + $env:path
 
