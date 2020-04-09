@@ -6,6 +6,8 @@ param(
     [string]$EmbeddedPythonVersion="3.7.7",
     [string]$ComtypesUrl="https://github.com/enthought/comtypes",
     [string]$SetuptoolsUrl="https://github.com/pypa/setuptools",
+    [string]$PipSourceUrl="https://github.com/pypa/pip/archive/20.0.2.tar.gz",
+    [string]$WheelSourceUrl="https://github.com/pypa/wheel/archive/0.34.2.tar.gz",
     [string]$BuildDir=""
 )
 
@@ -276,8 +278,8 @@ function Install-SetuptoolsFromSource {
             Push-Location (Join-Path $BuildDir $SourcePath)
             Run-Command -Cmd "python" -Arguments @("-W ignore", ".\bootstrap.py")
             Run-Command -Cmd "python" -Arguments @("-W ignore", "setup.py", "install")
-            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "https://github.com/pypa/pip/archive/20.0.2.tar.gz")
-            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "https://github.com/pypa/wheel/archive/0.34.2.tar.gz")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", $PipSourceUrl)
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", $WheelSourceUrl)
         } finally {
             Pop-Location
         }
