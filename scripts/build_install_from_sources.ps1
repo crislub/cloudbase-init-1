@@ -318,9 +318,28 @@ function Setup-EmbeddedPythonEnvironment {
     Copy-Item -Recurse -Force "${sourcePythonDir}\PC\pyconfig.h" "${embeddedPythonDir}\Include\"
 
     New-Item -Type Directory -Path "${embeddedPythonDir}\libs\"
-    # TODO: Needs to be replaced with the creation of lib from dll
-    Download-File "https://github.com/LuxCoreRender/WindowsCompileDeps/raw/master/x64/Release/lib/${pythonVersionHeader}.lib" `
-        "${embeddedPythonDir}\libs\${pythonVersionHeader}.lib"
+    $pythonLibPath = "${embeddedPythonDir}\libs\${pythonVersionHeader}.lib"
+    $pythonLibDefRawPath = "${embeddedPythonDir}\libs\${pythonVersionHeader}.raw.def"
+    $pythonLibDefPath = "${embeddedPythonDir}\libs\${pythonVersionHeader}.def"
+    $pythonDllPath = "${embeddedPythonDir}\${pythonVersionHeader}.dll"
+    dumpbin.exe /exports "${pythonDllPath}" > "${pythonLibDefRawPath}"
+    if ($LastExitCode) {
+        throw "Failed to dump symbols"
+    }
+    Write-Output "EXPORTS" > "${pythonLibDefPath}"
+    Get-Content "${pythonLibDefRawPath}" | ForEach-Object {
+        $splitObject = $_.split(" ")
+        [array]::reverse($splitObject)
+        if ($splitObject[0] -clike "*Py*") {
+            Write-Output $splitObject[0] >> "${pythonLibDefPath}"
+        }
+    }
+    lib.exe /def:"${pythonLibDefPath}" /out:"${pythonLibPath}" /machine:x64
+    if ($LastExitCode) {
+        throw "Failed to create symbol map"
+    }
+    Remove-Item -Force $pythonLibDefRawPath
+    Remove-Item -Force $pythonLibDefPath
 
     $env:path = "${embeddedPythonDir};${embeddedPythonDir}\scripts;" + $env:path
 
