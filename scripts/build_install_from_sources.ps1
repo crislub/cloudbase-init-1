@@ -352,6 +352,8 @@ function Setup-EmbeddedPythonEnvironment {
         $bdistWininstFile
     Remove-Item -Force "${bdistWininstFile}c"
 }
+
+
 ### Main ###
 
 try {
@@ -381,7 +383,6 @@ try {
     Install-PyWin32FromSource $PyWin32RepoUrl
     # TODO. Comment the following line and uncomment the line before. Keep this line for faster script testing (it takes more than 10 minutes to build the pywin32).
     # python -m pip install pywin32
-
 
     # PyMI setup can be skipped once the upstream version is published on pypi
     Install-PyMI $PyMiRepoUrl

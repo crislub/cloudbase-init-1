@@ -25,6 +25,10 @@
     -CloudbaseInitRepoUrl "https://github.com/cloudbase/cloudbase-init" `
     -PyWin32RepoUrl "https://github.com/mhammond/pywin32" `
     -PyMiRepoUrl "https://github.com/cloudbase/PyMI" `
+    -EmbeddedPythonVersion "3.7.7" `
+    -SetuptoolsUrl "https://github.com/pypa/setuptools" `
+    -PipSourceUrl "https://github.com/pypa/pip/archive/20.0.2.tar.gz" `
+    -WheelSourceUrl "https://github.com/pypa/wheel/archive/0.34.2.tar.gz" `
     -BuildDir "build"
 
 ```
@@ -33,6 +37,7 @@
 #### Workflow of the script:
    - Download and set pip upper requirements from OpenStack
    - Create / clean temporary build directory
+   - If EmbeddedPythonVersion is set, download the Python embedded version, prepare it and add it to path
    - Build and install PyWin32 from sources
    - Build and install PyMI from sources
    - Build, install and create Cloudbase-Init binary from sources
