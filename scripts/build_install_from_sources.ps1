@@ -18,7 +18,7 @@ $PIP_BUILD_NO_BINARIES_ARGS = "--no-binary :all:"
 function Run-CmdWithRetry {
     param(
         $command,
-        [int]$maxRetryCount=1,
+        [int]$maxRetryCount=3,
         [int]$retryInterval=1
     )
 
@@ -276,8 +276,8 @@ function Install-SetuptoolsFromSource {
             Push-Location (Join-Path $BuildDir $SourcePath)
             Run-Command -Cmd "python" -Arguments @("-W ignore", ".\bootstrap.py")
             Run-Command -Cmd "python" -Arguments @("-W ignore", "setup.py", "install")
-            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "pip")
-            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "wheel")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "https://github.com/pypa/pip/archive/20.0.2.tar.gz")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "https://github.com/pypa/wheel/archive/0.34.2.tar.gz")
         } finally {
             Pop-Location
         }
@@ -352,9 +352,9 @@ try {
     }
 
     # Install PyWin32 from source
-    # Install-PyWin32FromSource $PyWin32RepoUrl
+    Install-PyWin32FromSource $PyWin32RepoUrl
     # TODO. Comment the following line and uncomment the line before. Keep this line for faster script testing (it takes more than 10 minutes to build the pywin32).
-    python -m pip install pywin32
+    # python -m pip install pywin32
 
 
     # PyMI setup can be skipped once the upstream version is published on pypi
