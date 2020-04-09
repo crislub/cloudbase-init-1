@@ -344,7 +344,9 @@ function Setup-EmbeddedPythonEnvironment {
     $env:path = "${embeddedPythonDir};${embeddedPythonDir}\scripts;" + $env:path
 
     Install-SetuptoolsFromSource $SetuptoolsUrl
-    # Comtypes cannot be installed as a requirement with pip install no_binary if this bdist_winst is not replaced with the full Python version
+
+    # Embedded Python has bdist_wininst.pyc reimplemented to throw an error if any package using this feature
+    # is to be installed. Pywin32 and comtypes packages cannot be installed with pip or by running setup.py install.
     $bdistWininstFile = "${embeddedPythonDir}\Lib\distutils\command\bdist_wininst.py"
     Download-File "https://raw.githubusercontent.com/python/cpython/v${EmbeddedPythonVersion}/Lib/distutils/command/bdist_wininst.py" `
         $bdistWininstFile
