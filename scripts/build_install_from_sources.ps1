@@ -3,6 +3,9 @@ param(
     [string]$CloudbaseInitRepoUrl="https://github.com/cloudbase/cloudbase-init",
     [string]$PyWin32RepoUrl="https://github.com/mhammond/pywin32",
     [string]$PyMiRepoUrl="https://github.com/cloudbase/PyMI",
+    [string]$EmbeddedPythonVersion="3.7.7",
+    [string]$ComtypesUrl="https://github.com/enthought/comtypes",
+    [string]$SetuptoolsUrl="https://github.com/pypa/setuptools",
     [string]$BuildDir=""
 )
 
@@ -15,7 +18,7 @@ $PIP_BUILD_NO_BINARIES_ARGS = "--no-binary :all:"
 function Run-CmdWithRetry {
     param(
         $command,
-        [int]$maxRetryCount=3,
+        [int]$maxRetryCount=1,
         [int]$retryInterval=1
     )
 
@@ -145,11 +148,44 @@ function Install-PythonPackage {
 
     Write-Host "Installing Python package from ${SourcePath}"
 
-    $cmdArgs = @("-m", "pip", "install")
+    $cmdArgs = @("-W ignore", "-m", "pip", "install")
     if ($BuildWithoutBinaries) {
         $cmdArgs += $PIP_BUILD_NO_BINARIES_ARGS
     }
     $cmdArgs += "."
+
+    Run-CmdWithRetry {
+        try {
+            Push-Location (Join-Path $BuildDir $SourcePath)
+            Run-Command -Cmd "python" -Arguments $cmdArgs
+        } finally {
+            Pop-Location
+        }
+    }
+}
+
+function Expand-Archive {
+    param([string]$archive,
+          [string]$outputDir
+    )
+
+    Push-Location $outputDir
+    try {
+        & "C:\Program Files\7-Zip\7z.exe" x -y $archive
+        if ($LastExitCode) {
+            throw "7z.exe failed on archive: $archive"
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+function Setup-PythonPackage {
+    param([string]$SourcePath)
+
+    Write-Host "Setup Python package from ${SourcePath}"
+
+    $cmdArgs = @("-W ignore", "setup.py", "install")
 
     Run-CmdWithRetry {
         try {
@@ -196,7 +232,16 @@ function Install-PyWin32FromSource {
     $sourcePath = "pywin32"
 
     Clone-Repo $Url $sourceFolder
-    Install-PythonPackage -SourcePath $sourcePath -BuildWithoutBinaries
+    Install-PythonPackage -SourcePath $sourcePath
+}
+
+function Install-ComtypesFromSource {
+    param($Url)
+
+    $sourcePath = "comptype"
+
+    Clone-Repo $Url $sourcePath
+    Install-PythonPackage -SourcePath $sourcePath
 }
 
 function Install-PyMI {
@@ -206,7 +251,7 @@ function Install-PyMI {
 
     Clone-Repo $Url $sourcePath
     Install-PythonRequirements -SourcePath $sourcePath -BuildWithoutBinaries
-    Install-PythonPackage -SourcePath $sourcePath -BuildWithoutBinaries
+    Install-PythonPackage -SourcePath $sourcePath
 }
 
 function Install-CloudbaseInit {
@@ -219,6 +264,68 @@ function Install-CloudbaseInit {
     Install-PythonPackage -SourcePath $sourcePath
 }
 
+function Install-SetuptoolsFromSource {
+    param($Url)
+
+    $sourcePath = "setuptools"
+
+    Clone-Repo $Url $sourcePath
+
+    Run-CmdWithRetry {
+        try {
+            Push-Location (Join-Path $BuildDir $SourcePath)
+            Run-Command -Cmd "python" -Arguments @("-W ignore", ".\bootstrap.py")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "setup.py", "install")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "pip")
+            Run-Command -Cmd "python" -Arguments @("-W ignore", "-m", "easy_install", "wheel")
+        } finally {
+            Pop-Location
+        }
+    }
+}
+
+function Setup-EmbeddedPythonEnvironment {
+    param($EmbeddedPythonVersion)
+
+    $EmbeddedPythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/python-${EmbeddedPythonVersion}-embed-amd64.zip"
+    $SourcePythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/Python-${EmbeddedPythonVersion}.tgz"
+
+    $embeddedPythonDir = "$BuildDir\embedded-python"
+    Download-File $EmbeddedPythonUrl "${embeddedPythonDir}.zip"
+    New-Item -Type Directory -Path $embeddedPythonDir
+    Expand-Archive "${embeddedPythonDir}.zip" $embeddedPythonDir
+    Remove-Item -Force "${embeddedPythonDir}.zip"
+
+    $sourcePythonDir = "$BuildDir\source-python"
+    Download-File "${SourcePythonUrl}" "${sourcePythonDir}.tgz"
+    New-Item -Type Directory -Path $sourcePythonDir
+    Expand-Archive "${sourcePythonDir}.tgz" $sourcePythonDir
+    Remove-Item -Force "${sourcePythonDir}.tgz"
+    New-Item -Type Directory -Path "$sourcePythonDir\src"
+    Expand-Archive "${sourcePythonDir}\source-python.tar" "$sourcePythonDir\src"
+    Remove-Item -Force -Recurse "${sourcePythonDir}\source-python.tar"
+    $sourcePythonDir = "${sourcePythonDir}\src\Python-3.7.7"
+
+    Remove-Item -Force "${embeddedPythonDir}\python37._pth"
+
+    New-Item -Type Directory -Path "${embeddedPythonDir}\Lib"
+    Expand-Archive "${embeddedPythonDir}\python37.zip" "${embeddedPythonDir}\Lib"
+    Remove-Item -Force "${embeddedPythonDir}\python37.zip"
+
+    Copy-Item -Recurse -Force "${sourcePythonDir}\Include" "${embeddedPythonDir}\"
+    Copy-Item -Recurse -Force "${sourcePythonDir}\PC\pyconfig.h" "${embeddedPythonDir}\Include\"
+
+    New-Item -Type Directory -Path "${embeddedPythonDir}\libs\"
+    # TODO: Needs to be replaced with the creation of lib from dll
+    Download-File "https://github.com/LuxCoreRender/WindowsCompileDeps/raw/master/x64/Release/lib/python37.lib" `
+        "${embeddedPythonDir}\libs\python37.lib"
+
+    $env:path = "${embeddedPythonDir};${embeddedPythonDir}\scripts;" + $env:path
+
+    Install-SetuptoolsFromSource $SetuptoolsUrl
+    # Comtypes cannot be installed as a requirement with pip install no_binary
+    Install-ComtypesFromSource $ComtypesUrl
+}
 ### Main ###
 
 try {
@@ -238,10 +345,17 @@ try {
     Set-VCVars -Version "14.0"
 
     # Setup pip upper requirements
-    Setup-PythonPip
+    # Setup-PythonPip
+
+    if ($EmbeddedPythonVersion) {
+        Setup-EmbeddedPythonEnvironment $EmbeddedPythonVersion
+    }
 
     # Install PyWin32 from source
-    Install-PyWin32FromSource $PyWin32RepoUrl
+    # Install-PyWin32FromSource $PyWin32RepoUrl
+    # TODO. Comment the following line and uncomment the line before. Keep this line for faster script testing (it takes more than 10 minutes to build the pywin32).
+    python -m pip install pywin32
+
 
     # PyMI setup can be skipped once the upstream version is published on pypi
     Install-PyMI $PyMiRepoUrl
