@@ -3,7 +3,8 @@ param(
     [string]$CloudbaseInitRepoUrl="https://github.com/cloudbase/cloudbase-init",
     [string]$PyWin32RepoUrl="https://github.com/mhammond/pywin32",
     [string]$PyMiRepoUrl="https://github.com/cloudbase/PyMI",
-    [string]$EmbeddedPythonVersion="3.7.7",
+    [string]$FromSourcePythonVersion="v3.7.7",
+    [string]$EmbeddedPythonVersion="",
     [string]$SetuptoolsUrl="https://github.com/pypa/setuptools",
     [string]$PipSourceUrl="https://github.com/pypa/pip/archive/20.0.2.tar.gz",
     [string]$WheelSourceUrl="https://github.com/pypa/wheel/archive/0.34.2.tar.gz",
@@ -101,7 +102,8 @@ function Run-Command {
 function Clone-Repo {
     param(
         $Url,
-        $Destination
+        $Destination,
+        $Branch="master"
     )
 
     Write-Host "Cloning ${Url} to ${Destination}"
@@ -109,9 +111,9 @@ function Clone-Repo {
     Run-CmdWithRetry {
         try {
             Push-Location $BuildDir
-            git clone $Url $Destination
+            git clone --single-branch -b $Branch $Url $Destination
             if ($LastExitCode) {
-                throw "git clone ${Url} ${Destination} failed"
+                throw "git clone --single-branch -b $Url $Branch $Destination failed"
             }
         } finally {
             Pop-Location
@@ -353,6 +355,40 @@ function Setup-EmbeddedPythonEnvironment {
     Remove-Item -Force "${bdistWininstFile}c"
 }
 
+function Setup-FromSourcePythonEnvironment {
+    param($FromSourcePythonVersion)
+
+    $sourceFolder = "python-source"
+    $pythonSourceFolderPath = "$BuildDir\$sourceFolder"
+    $pythonTempBuildDir = "$pythonSourceFolderPath\PCbuild\amd64"
+    $pythonSourceRepo = "https://github.com/python/cpython"
+    $pythonBuildDir = "$BuildDir\python"
+
+    Clone-Repo -Url $pythonSourceRepo -Destination $sourceFolder -Branch $FromSourcePythonVersion
+    Push-Location $pythonSourceFolderPath
+    try {
+        cmd.exe /c PCbuild\build.bat -p x64 --no-tkinter -e
+        if ($LastExitCode) {
+            throw "Failed to build Python from source"
+        }
+    } finally {
+        Pop-Location
+    }
+
+    Move-Item $pythonTempBuildDir $pythonBuildDir
+    Copy-Item -Recurse "$pythonSourceFolderPath\Include" "$pythonBuildDir"
+    Copy-Item "$pythonSourceFolderPath\PC\pyconfig.h" "$pythonBuildDir\Include\"
+
+    Copy-Item -Recurse "$pythonSourceFolderPath\Lib" "$pythonBuildDir"
+
+    New-Item -Type Directory -Path "${pythonBuildDir}\libs\"
+    Copy-Item "$pythonBuildDir\python*.lib" "${pythonBuildDir}\libs\"
+
+    $env:path = "${pythonBuildDir};${pythonBuildDir}\scripts;" + $env:path
+
+    Install-SetuptoolsFromSource $SetuptoolsUrl
+}
+
 
 ### Main ###
 
@@ -377,6 +413,10 @@ try {
 
     if ($EmbeddedPythonVersion) {
         Setup-EmbeddedPythonEnvironment $EmbeddedPythonVersion
+    }
+
+    if ($FromSourcePythonVersion) {
+        Setup-FromSourcePythonEnvironment $FromSourcePythonVersion
     }
 
     # Install PyWin32 from source
