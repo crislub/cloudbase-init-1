@@ -255,16 +255,19 @@ function Install-PyMI {
     Clone-Repo $Url $sourcePath
     Install-PythonRequirements -SourcePath $sourcePath -BuildWithoutBinaries
     Install-PythonPackage -SourcePath $sourcePath
+    Write-Host "PyMI installed successfully"
 }
 
 function Install-CloudbaseInit {
     param($Url)
 
+    Write-Host "Installing CloudbaseInit..."
     $sourcePath = "cloudbase-init"
 
     Clone-Repo $Url $sourcePath
     Install-PythonRequirements -SourcePath $sourcePath -BuildWithoutBinaries
     Install-PythonPackage -SourcePath $sourcePath
+    Write-Host "CloudbaseInit installed successfully"
 }
 
 function Install-SetuptoolsFromSource {
@@ -380,11 +383,13 @@ function Setup-FromSourcePythonEnvironment {
 
 function Clean-BuildArtifacts {
     # Remove the Include folder
-    Get-Item "${PythonDir\Include}"
+    Remove-Item -Force -Recurse "${PythonDir}\Include"
+    # Remove all the __pycache__ folders
+    Get-ChildItem -Recurse -Include "__pycache__" $PythonDir | Remove-Item -Force -Recurse
     # Remove all the .pdb files
-    Get-ChildItem -Recurse -Include "*.pdb" $PythonDir
-    # Remove all the .pyc files that do have a .py correspondent
-    Get-ChildItem -Recurse -Include "*.pyc" $PythonDir
+    Get-ChildItem -Recurse -Include "*.pdb" $PythonDir | Remove-Item -Force
+    # Remove lib and exp files
+    Get-ChildItem -Include @("*.lib", "*.exp") -Exclude "python*" "$PythonDir\*" | Remove-Item -Force
 }
 
 
@@ -425,9 +430,9 @@ try {
     }
 
     # Install PyWin32 from source
-    #Install-PyWin32FromSource $PyWin32RepoUrl
+    Install-PyWin32FromSource $PyWin32RepoUrl
     # TODO. Comment the following line and uncomment the line before. Keep this line for faster script testing (it takes more than 10 minutes to build the pywin32).
-    python -m pip install pywin32
+    # python -m pip install pywin32
 
     # PyMI setup can be skipped once the upstream version is published on pypi
     Install-PyMI $PyMiRepoUrl
