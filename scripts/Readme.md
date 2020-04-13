@@ -27,6 +27,7 @@
 
 
 ```powershell
+# full command line
 .\build_install_from_sources.ps1 `
     -CloudbaseInitRepoUrl "https://github.com/cloudbase/cloudbase-init" `
     -PyWin32RepoUrl "https://github.com/mhammond/pywin32" `
@@ -39,6 +40,11 @@
     -CleanBuildArtifacts:$false,
     -BuildDir "build"
 
+# install using Python from source (tag v3.7.7)
+.\build_install_from_sources.ps1 -PythonOrigin FromSource -PythonVersion "v3.7.7"
+
+# install using Python Embedded 3.7.7
+.\build_install_from_sources.ps1 -PythonOrigin Embedded -PythonVersion "3.7.7"
 ```
 
 
