@@ -3,19 +3,18 @@ param(
     [string]$CloudbaseInitRepoUrl="https://github.com/cloudbase/cloudbase-init",
     [string]$PyWin32RepoUrl="https://github.com/mhammond/pywin32",
     [string]$PyMiRepoUrl="https://github.com/cloudbase/PyMI",
-    [ValidateSet("AlreadyInstalled", "Embedded", "FromSource")]
+    [ValidateSet("AlreadyInstalled", "FromSource")]
     [string]$PythonOrigin="AlreadyInstalled",
-    # Specifies which version to use in case Embedded or FromSource is used
-    # In Embedded case: "https://www.python.org/ftp/python/$PythonVersion" should exist
+    # Specifies which version to use in case FromSource is used
     # In FromSource case, the GitHub https://github.com/python/cpython branch should exist (tags also work as branches)
     [string]$PythonVersion="v3.7.7",
-    # Specifies which setuptools git source to use in case Embedded or FromSource is used
+    # Specifies which setuptools git source to use in case FromSource is used
     [string]$SetuptoolsGitUrl="https://github.com/pypa/setuptools",
-    # Specifies which pip source in ttar.gz format to use in case Embedded or FromSource is used
+    # Specifies which pip source in tar.gz format to use in case FromSource is used
     [string]$PipSourceUrl="https://github.com/pypa/pip/archive/20.0.2.tar.gz",
-    # Specifies which wheel source in ttar.gz format to use in case Embedded or FromSource is used
+    # Specifies which wheel source in tar.gz format to use in case FromSource is used
     [string]$WheelSourceUrl="https://github.com/pypa/wheel/archive/0.34.2.tar.gz",
-    # If the PythonOrigin is set to Embedded or FromSource, clean the Python folder (remove .pdb, .pyc, header files)
+    # If the PythonOrigin is set to FromSource, clean the Python folder (remove .pdb, .pyc, header files)
     [switch]$CleanBuildArtifacts,
     [string]$BuildDir=""
 )
@@ -193,23 +192,6 @@ function Expand-Archive {
     }
 }
 
-function Setup-PythonPackage {
-    param([string]$SourcePath)
-
-    Write-Host "Setup Python package from ${SourcePath}"
-
-    $cmdArgs = @("-W ignore", "setup.py", "install")
-
-    Run-CmdWithRetry {
-        try {
-            Push-Location (Join-Path $BuildDir $SourcePath)
-            Run-Command -Cmd "python" -Arguments $cmdArgs
-        } finally {
-            Pop-Location
-        }
-    }
-}
-
 function Prepare-BuildDir {
     Write-Host "Creating / Cleaning up build directory ${BuildDir}"
 
@@ -236,15 +218,6 @@ function Install-PyWin32FromSource {
     $sourcePath = "pywin32"
 
     Clone-Repo $Url $sourceFolder
-    Install-PythonPackage -SourcePath $sourcePath
-}
-
-function Install-ComtypesFromSource {
-    param($Url)
-
-    $sourcePath = "comptype"
-
-    Clone-Repo $Url $sourcePath
     Install-PythonPackage -SourcePath $sourcePath
 }
 
@@ -289,68 +262,6 @@ function Install-SetuptoolsFromSource {
             Pop-Location
         }
     }
-}
-
-function Setup-EmbeddedPythonEnvironment {
-    param($EmbeddedPythonVersion)
-
-    $EmbeddedPythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/python-${EmbeddedPythonVersion}-embed-amd64.zip"
-    $SourcePythonUrl = "https://www.python.org/ftp/python/${EmbeddedPythonVersion}/Python-${EmbeddedPythonVersion}.tgz"
-    $pythonVersionHeader = "python" + (($EmbeddedPythonVersion.split(".") | Select-Object -First 2) -Join  "")
-
-    Download-File $EmbeddedPythonUrl "${PythonDir}.zip"
-    New-Item -Type Directory -Path $PythonDir
-    Expand-Archive "${PythonDir}.zip" $PythonDir
-    Remove-Item -Force "${PythonDir}.zip"
-
-    $sourcePythonDir = "$BuildDir\source-python"
-    Download-File "${SourcePythonUrl}" "${sourcePythonDir}.tgz"
-    New-Item -Type Directory -Path $sourcePythonDir
-    Expand-Archive "${sourcePythonDir}.tgz" $sourcePythonDir
-    Remove-Item -Force "${sourcePythonDir}.tgz"
-    New-Item -Type Directory -Path "$sourcePythonDir\src"
-    Expand-Archive "${sourcePythonDir}\source-python.tar" "$sourcePythonDir\src"
-    Remove-Item -Force -Recurse "${sourcePythonDir}\source-python.tar"
-    $sourcePythonDir = "${sourcePythonDir}\src\Python-${EmbeddedPythonVersion}"
-
-    Remove-Item -Force "${PythonDir}\${pythonVersionHeader}._pth"
-
-    New-Item -Type Directory -Path "${PythonDir}\Lib"
-    Expand-Archive "${PythonDir}\${pythonVersionHeader}.zip" "${PythonDir}\Lib"
-    Remove-Item -Force "${PythonDir}\${pythonVersionHeader}.zip"
-
-    Copy-Item -Recurse -Force "${sourcePythonDir}\Include" "${PythonDir}\"
-    Copy-Item -Recurse -Force "${sourcePythonDir}\PC\pyconfig.h" "${PythonDir}\Include\"
-
-    New-Item -Type Directory -Path "${PythonDir}\libs\"
-    $pythonLibPath = "${PythonDir}\libs\${pythonVersionHeader}.lib"
-    $pythonLibDefRawPath = "${PythonDir}\libs\${pythonVersionHeader}.raw.def"
-    $pythonLibDefPath = "${PythonDir}\libs\${pythonVersionHeader}.def"
-    $pythonDllPath = "${PythonDir}\${pythonVersionHeader}.dll"
-    dumpbin.exe /exports "${pythonDllPath}" > "${pythonLibDefRawPath}"
-    if ($LastExitCode) {
-        throw "Failed to dump symbols"
-    }
-    Write-Output "EXPORTS" > "${pythonLibDefPath}"
-    Get-Content "${pythonLibDefRawPath}" | ForEach-Object {
-        $splitObject = $_.split(" ")
-        [array]::reverse($splitObject)
-        if ($splitObject[0] -clike "*Py*") {
-            Write-Output $splitObject[0] >> "${pythonLibDefPath}"
-        }
-    }
-    lib.exe /def:"${pythonLibDefPath}" /out:"${pythonLibPath}" /machine:x64
-    if ($LastExitCode) {
-        throw "Failed to create symbol map"
-    }
-    Remove-Item -Force $pythonLibDefRawPath
-    Remove-Item -Force $pythonLibDefPath
-
-    # Embedded Python has bdist_wininst.pyc reimplemented to throw an error if any package using this feature
-    # is to be installed. Pywin32 and comtypes packages cannot be installed with pip or by running setup.py install.
-    $bdistFile = "Lib\distutils\command\bdist_wininst.py"
-    Copy-Item -Force "${sourcePythonDir}\${bdistFile}" "${PythonDir}\${bdistFile}"
-    Remove-Item -Force "${PythonDir}\${bdistFile}c"
 }
 
 function Setup-FromSourcePythonEnvironment {
@@ -426,15 +337,11 @@ try {
     # Setup pip upper requirements
     Setup-PythonPip
 
-    if (@("Embedded", "FromSource") -contains $PythonOrigin) {
+    if (@("FromSource") -contains $PythonOrigin) {
         if (!($PythonVersion -and $SetuptoolsGitUrl -and $PipSourceUrl -and $WheelSourceUrl)) {
             throw "If PythonOrigin is set to ${PythonOrigin}, SetuptoolsGitUrl, PipSourceUrl and WheelSourceUrl must be set"
         }
-        if ($PythonOrigin -eq "Embedded") {
-            Setup-EmbeddedPythonEnvironment $PythonVersion
-        } else {
-            Setup-FromSourcePythonEnvironment $PythonVersion
-        }
+        Setup-FromSourcePythonEnvironment $PythonVersion
         $env:path = "${PythonDir};${PythonDir}\scripts;" + $env:path
     }
 
@@ -450,7 +357,7 @@ try {
 
     Install-CloudbaseInit $CloudbaseInitRepoUrl
 
-    if ($CleanBuildArtifacts -and (@("Embedded", "FromSource") -contains $PythonOrigin)) {
+    if ($CleanBuildArtifacts -and (@("FromSource") -contains $PythonOrigin)) {
         Clean-BuildArtifacts
     }
 } finally {
