@@ -2,7 +2,7 @@
 
 #### Clean Windows Server 2016 /2019 or Windows 10 install with latest updates
 
-#### Python installed and added to path (with pip installed).
+#### Python installed and added to path (with pip installed) if PythonOrigin is set to AlreadyInstalled.
     Download link: https://www.python.org/ftp/python/3.7.7/python-3.7.7-amd64.exe
 
 #### Visual Studio 2015 Community installed, with the following components:
@@ -13,15 +13,15 @@
     If you prefer to not build pywin32, Visual Studio 2017 / 2019 can be used too.
     Reboot after VS installation is complete.
 
-### To build Python from source, Visual Studio 2017 Community installed with the following components:
+#### To build Python from source, Visual Studio 2017 Community installed with the following components:
     - VC++ 2017 v141
     - Windows 10 SDK (10.0.14393.0). This version supports Python 3.8 build too.
 
 #### All the Python packages will be built and installed using pip flags: "--no-binary :all:"
 
-## The full build of cloudbase-init (and dependencies) using Embedded Python takes around 10 minutes.
+#### The full build of cloudbase-init (and dependencies) using Embedded Python takes around 10 minutes.
 
-## The full build of cloudbase-init (and dependencies) using Python from source takes around 20 minutes.
+#### The full build of cloudbase-init (and dependencies) using Python from source takes around 20 minutes.
 
 #### How to run:
 
@@ -51,4 +51,4 @@
    - Build and install PyWin32 from sources
    - Build and install PyMI from sources
    - Build, install and create Cloudbase-Init binary from sources
-   - If CleanBuildArtifacts is set adn PythonOrigin is Embedded or FromSource, cleanup the .pdb, .pyc, header files.
+   - If CleanBuildArtifacts is set and PythonOrigin is Embedded or FromSource, cleanup the .pdb, .pyc, header files.
