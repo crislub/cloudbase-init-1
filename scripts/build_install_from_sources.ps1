@@ -344,10 +344,9 @@ function Setup-EmbeddedPythonEnvironment {
 
     # Embedded Python has bdist_wininst.pyc reimplemented to throw an error if any package using this feature
     # is to be installed. Pywin32 and comtypes packages cannot be installed with pip or by running setup.py install.
-    $bdistWininstFile = "${embeddedPythonDir}\Lib\distutils\command\bdist_wininst.py"
-    Download-File "https://raw.githubusercontent.com/python/cpython/v${EmbeddedPythonVersion}/Lib/distutils/command/bdist_wininst.py" `
-        $bdistWininstFile
-    Remove-Item -Force "${bdistWininstFile}c"
+    $bdistFile = "Lib\distutils\command\bdist_wininst.py"
+    Copy-Item -Force "${sourcePythonDir}\${bdistFile}" "${PythonDir}\${bdistFile}"
+    Remove-Item -Force "${PythonDir}\${bdistFile}c"
 }
 
 function Setup-FromSourcePythonEnvironment {
@@ -380,6 +379,12 @@ function Setup-FromSourcePythonEnvironment {
 }
 
 function Clean-BuildArtifacts {
+    # Remove the Include folder
+    Get-Item "${PythonDir\Include}"
+    # Remove all the .pdb files
+    Get-ChildItem -Recurse -Include "*.pdb" $PythonDir
+    # Remove all the .pyc files that do have a .py correspondent
+    Get-ChildItem -Recurse -Include "*.pyc" $PythonDir
 }
 
 
