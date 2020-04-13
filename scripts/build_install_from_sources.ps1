@@ -1,12 +1,8 @@
 #ps1
 param(
-    [parameter(Mandatory=$true)]
     [string]$CloudbaseInitRepoUrl="https://github.com/cloudbase/cloudbase-init",
-    [parameter(Mandatory=$true)]
     [string]$PyWin32RepoUrl="https://github.com/mhammond/pywin32",
-    [parameter(Mandatory=$true)]
     [string]$PyMiRepoUrl="https://github.com/cloudbase/PyMI",
-    [parameter(Mandatory=$true)]
     [ValidateSet("AlreadyInstalled", "Embedded", "FromSource")]
     [string]$PythonOrigin="AlreadyInstalled",
     # Specifies which version to use in case Embedded or FromSource is used
@@ -346,10 +342,6 @@ function Setup-EmbeddedPythonEnvironment {
     Remove-Item -Force $pythonLibDefRawPath
     Remove-Item -Force $pythonLibDefPath
 
-    $env:path = "${embeddedPythonDir};${embeddedPythonDir}\scripts;" + $env:path
-
-    Install-SetuptoolsFromSource $SetuptoolsGitUrl
-
     # Embedded Python has bdist_wininst.pyc reimplemented to throw an error if any package using this feature
     # is to be installed. Pywin32 and comtypes packages cannot be installed with pip or by running setup.py install.
     $bdistWininstFile = "${embeddedPythonDir}\Lib\distutils\command\bdist_wininst.py"
@@ -385,8 +377,6 @@ function Setup-FromSourcePythonEnvironment {
 
     New-Item -Type Directory -Path "${PythonDir}\libs\"
     Copy-Item "$PythonDir\python*.lib" "${PythonDir}\libs\"
-
-    Install-SetuptoolsFromSource $SetuptoolsGitUrl
 }
 
 function Clean-BuildArtifacts {
@@ -416,35 +406,30 @@ try {
     # Setup pip upper requirements
     Setup-PythonPip
 
-    if ($PythonOrigin -eq "Embedded") {
-        if ($PythonVersion -and $SetuptoolsGitUrl -and $PipSourceUrl -and $WheelSourceUrl) {
+    if (@("Embedded", "FromSource") -contains $PythonOrigin) {
+        if (!($PythonVersion -and $SetuptoolsGitUrl -and $PipSourceUrl -and $WheelSourceUrl)) {
+            throw "If PythonOrigin is set to ${PythonOrigin}, SetuptoolsGitUrl, PipSourceUrl and WheelSourceUrl must be set"
+        }
+        if ($PythonOrigin -eq "Embedded") {
             Setup-EmbeddedPythonEnvironment $PythonVersion
         } else {
-            throw "If PythonOrigin is set to Embedded, SetuptoolsGitUrl, PipSourceUrl and WheelSourceUrl must be set"
-        }
-        $env:path = "${PythonDir};${PythonDir}\scripts;" + $env:path
-    }
-
-    if ($PythonOrigin -eq "FromSource") {
-        if ($PythonVersion -and $SetuptoolsGitUrl -and $PipSourceUrl -and $WheelSourceUrl) {
             Setup-FromSourcePythonEnvironment $PythonVersion
-        } else {
-            throw "If PythonOrigin is set to FromSource, SetuptoolsGitUrl, PipSourceUrl and WheelSourceUrl must be set"
         }
         $env:path = "${PythonDir};${PythonDir}\scripts;" + $env:path
+        Install-SetuptoolsFromSource $SetuptoolsGitUrl
     }
 
     # Install PyWin32 from source
-    Install-PyWin32FromSource $PyWin32RepoUrl
+    #Install-PyWin32FromSource $PyWin32RepoUrl
     # TODO. Comment the following line and uncomment the line before. Keep this line for faster script testing (it takes more than 10 minutes to build the pywin32).
-    # python -m pip install pywin32
+    python -m pip install pywin32
 
     # PyMI setup can be skipped once the upstream version is published on pypi
     Install-PyMI $PyMiRepoUrl
 
     Install-CloudbaseInit $CloudbaseInitRepoUrl
 
-    if ($CleanBuildArtifacts -and ($PythonOrigin -eq "Embedded" -or $PythonOrigin -eq "FromSource")) {
+    if ($CleanBuildArtifacts -and (@("Embedded", "FromSource") -contains $PythonOrigin)) {
         Clean-BuildArtifacts
     }
 } finally {
