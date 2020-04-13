@@ -40,10 +40,13 @@
     -CleanBuildArtifacts:$false,
     -BuildDir "build"
 
-# install using Python from source (tag v3.7.7)
+# install Cloudbase-Init using Python already installed (Python and Python scripts folders should be added to path).
+.\build_install_from_sources.ps1
+
+# install Cloudbase-Init using Python from source (tag v3.7.7)
 .\build_install_from_sources.ps1 -PythonOrigin FromSource -PythonVersion "v3.7.7"
 
-# install using Python Embedded 3.7.7
+# install Cloudbase-Init using Python Embedded 3.7.7
 .\build_install_from_sources.ps1 -PythonOrigin Embedded -PythonVersion "3.7.7"
 ```
 
