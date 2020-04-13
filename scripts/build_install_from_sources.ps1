@@ -160,16 +160,17 @@ function Install-PythonPackage {
 
     Write-Host "Installing Python package from ${SourcePath}"
 
-    $cmdArgs = @("-W ignore", "-m", "pip", "install")
-    if ($BuildWithoutBinaries) {
-        $cmdArgs += $PIP_BUILD_NO_BINARIES_ARGS
-    }
-    $cmdArgs += "."
-
     Run-CmdWithRetry {
         try {
             Push-Location (Join-Path $BuildDir $SourcePath)
-            Run-Command -Cmd "python" -Arguments $cmdArgs
+            if ($BuildWithoutBinaries) {
+                & python -m pip install --no-binary :all: .
+            } else {
+                & python -m pip install .
+            }
+            if ($LastExitCode) {
+                throw "Failed to install python package $SourcePath"
+            }
         } finally {
             Pop-Location
         }
@@ -392,7 +393,15 @@ function Clean-BuildArtifacts {
     Get-ChildItem -Include @("*.lib", "*.exp") -Exclude "python*" "$PythonDir\*" | Remove-Item -Force
 }
 
-
+function Clean-PipCacheDir {
+    if ($env:APPDATA) {
+        $pipCacheDir = Join-Path (Split-Path -Parent $env:APPDATA) "Local\pip"
+        if (Test-Path $pipCacheDir) {
+            Write-Host "Cleaning pip cache dir $pipCacheDir"
+            Remove-Item -Recurse -Force $pipCacheDir
+        }
+    }
+}
 ### Main ###
 
 try {
@@ -409,6 +418,7 @@ try {
         $PythonDir = Join-Path $BuildDir "python"
     }
     Prepare-BuildDir
+    Clean-PipCacheDir
 
     # Make sure VS 2015 is used
     Set-VCVars -Version "14.0"
@@ -426,8 +436,9 @@ try {
             Setup-FromSourcePythonEnvironment $PythonVersion
         }
         $env:path = "${PythonDir};${PythonDir}\scripts;" + $env:path
-        Install-SetuptoolsFromSource $SetuptoolsGitUrl
     }
+
+    Install-SetuptoolsFromSource $SetuptoolsGitUrl
 
     # Install PyWin32 from source
     Install-PyWin32FromSource $PyWin32RepoUrl
