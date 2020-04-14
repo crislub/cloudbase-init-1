@@ -72,14 +72,15 @@ function Download-File {
 function Set-VCVars {
     param(
         $Version="14.0",
-        $Platform="x86_amd64"
+        $Platform="x86_amd64",
+        $Sdk="8.1"
     )
 
     Write-Host "Setting Visual Studio version ${Version} environment variables"
 
     Push-Location "$ENV:ProgramFiles (x86)\Microsoft Visual Studio ${Version}\VC\"
     try {
-        cmd /c "vcvarsall.bat $platform & set" |
+        cmd /c "vcvarsall.bat $platform $Sdk & set" |
             ForEach-Object {
                 if ($_ -match "=") {
                     $v = $_.split("=")
@@ -331,8 +332,8 @@ try {
     Prepare-BuildDir
     Clean-PipCacheDir
 
-    # Make sure VS 2015 is used
-    Set-VCVars -Version "14.0"
+    # Make sure VS 2015 and Windows 8.1 SDK are used
+    Set-VCVars -Version "14.0" -Sdk "8.1"
 
     # Setup pip upper requirements
     Setup-PythonPip
