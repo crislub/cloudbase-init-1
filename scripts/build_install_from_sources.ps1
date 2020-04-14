@@ -16,6 +16,7 @@ param(
     [string]$WheelSourceUrl="https://github.com/pypa/wheel/archive/0.34.2.tar.gz",
     # If the PythonOrigin is set to FromSource, clean the Python folder (remove .pdb, .pyc, header files)
     [switch]$CleanBuildArtifacts,
+    [switch]$RemoveUnnecessaryExecutables,
     [string]$BuildDir=""
 )
 
@@ -295,6 +296,8 @@ function Setup-FromSourcePythonEnvironment {
 }
 
 function Clean-BuildArtifacts {
+    Write-Host "Cleaning build artifacts"
+
     # Remove the Include folder
     Remove-Item -Force -Recurse "${PythonDir}\Include"
     # Remove all the __pycache__ folders
@@ -303,6 +306,21 @@ function Clean-BuildArtifacts {
     Get-ChildItem -Recurse -Include "*.pdb" $PythonDir | Remove-Item -Force
     # Remove lib and exp files
     Get-ChildItem -Include @("*.lib", "*.exp") -Exclude "python*" "$PythonDir\*" | Remove-Item -Force
+}
+
+function Remove-UnnecessaryExecutables {
+    $excludeList = @("python.exe", "cloudbase-init*",
+                     "pip*", "easy_install*", "wheel*",
+                     "t64.exe", "w64.exe", "t32.exe", "w32.exe")
+
+    Write-Host "Removing unnecessary scripts and executables"
+
+    # Remove unnecessary scripts
+    Get-ChildItem -Exclude $excludeList "$PythonDir\Scripts\" | `
+        Remove-Item -Force -ErrorAction SilentlyContinue
+    # Remove unnecessary executables
+    Get-ChildItem -Recurse -Include "*.exe" -Exclude $excludeList $PythonDir | `
+        Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 function Clean-PipCacheDir {
@@ -358,8 +376,13 @@ try {
 
     Install-CloudbaseInit $CloudbaseInitRepoUrl
 
-    if ($CleanBuildArtifacts -and (@("FromSource") -contains $PythonOrigin)) {
-        Clean-BuildArtifacts
+    if (@("FromSource") -contains $PythonOrigin) {
+        if ($CleanBuildArtifacts) {
+            Clean-BuildArtifacts
+        }
+        if ($RemoveUnnecessaryExecutables) {
+            Remove-UnnecessaryExecutables
+        }
     }
 } finally {
     $endDate = Get-Date

@@ -42,6 +42,7 @@
     -PipSourceUrl "https://github.com/pypa/pip/archive/20.0.2.tar.gz" `
     -WheelSourceUrl "https://github.com/pypa/wheel/archive/0.34.2.tar.gz" `,
     -CleanBuildArtifacts:$false,
+    -RemoveUnnecessaryExecutables:$false,
     -BuildDir "build"
 ```
 
@@ -55,3 +56,4 @@
    - Build and install PyMI from sources
    - Build, install and create Cloudbase-Init binary from sources
    - If CleanBuildArtifacts is set and PythonOrigin is FromSource, cleanup the .pdb, .pyc, header files.
+   - If RemoveUnnecessaryExecutables is set and PythonOrigin is FromSource, remove the .exe files (excluding python.exe, setuptools/pip/wheel and cloudbase-init.exe).
