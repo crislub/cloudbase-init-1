@@ -43,6 +43,7 @@
     -WheelSourceUrl "https://github.com/pypa/wheel/archive/0.34.2.tar.gz" `,
     -CleanBuildArtifacts:$false,
     -RemoveUnnecessaryExecutables:$false,
+    -RemovePyWin32Adodbapi:$false,
     -BuildDir "build"
 ```
 
@@ -57,3 +58,4 @@
    - Build, install and create Cloudbase-Init binary from sources
    - If CleanBuildArtifacts is set and PythonOrigin is FromSource, cleanup the .pdb, .pyc, header files.
    - If RemoveUnnecessaryExecutables is set and PythonOrigin is FromSource, remove the .exe files (excluding python.exe, setuptools/pip/wheel and cloudbase-init.exe).
+   - If RemovePyWin32Adodbapi is set, remove the Adodbapi sources and references from PyWin32 source code

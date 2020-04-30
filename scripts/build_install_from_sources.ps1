@@ -17,6 +17,7 @@ param(
     # If the PythonOrigin is set to FromSource, clean the Python folder (remove .pdb, .pyc, header files)
     [switch]$CleanBuildArtifacts,
     [switch]$RemoveUnnecessaryExecutables,
+    [switch]$RemovePyWin32Adodbapi,
     [string]$BuildDir=""
 )
 
@@ -219,7 +220,19 @@ function Install-PyWin32FromSource {
 
     $sourcePath = "pywin32"
 
-    Clone-Repo $Url $sourceFolder
+    Clone-Repo $Url $sourcePath
+    if ($RemovePyWin32Adodbapi) {
+        try{
+            Write-Host "Remove PyWin32Adodbapi sources and references"
+            Push-Location "${BuildDir}/${sourcePath}"
+            Remove-Item -Force -Recurse "adodbapi"
+            Get-Content "setup.py" | Where-Object {!($_ -like "*adodbapi*")} | `
+                Out-File "setup.py.bak" -Encoding ascii
+            Move-Item -Force "setup.py.bak" "setup.py"
+        } finally {
+            Pop-Location
+        }
+    }
     Install-PythonPackage -SourcePath $sourcePath
 }
 
