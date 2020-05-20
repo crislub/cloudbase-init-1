@@ -9,9 +9,9 @@ jobs:
     strategy:
       max-parallel: 100
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6]
         architecture: [x64]
-        cloud: [gce, openstack-http, openstack, packet, ovf, maas, empty, vmwareguest, cloudstack, packet]
+        cloud: [openstack]
 
     steps:
     - uses: actions/checkout@v1
@@ -53,7 +53,6 @@ jobs:
       run: |
         $Erroractionpreference = "Continue"
         Mount-DiskImage -ImagePath (Resolve-Path ./cloudbase-init-config-drive.iso) | Out-Null
-        winrm.cmd quickconfig -force -q | Out-Null
         mkdir "./metadata" | Out-Null
         cp -recurse -force "$((Get-DiskImage (Resolve-Path './cloudbase-init-config-drive.iso') | Get-Volume).DriveLetter):\*" "./metadata";
         if (Test-path ".\metadata\openstack\latest\network_data.json.template") {
