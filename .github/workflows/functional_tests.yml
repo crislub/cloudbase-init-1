@@ -20,14 +20,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         architecture: ${{ matrix.architecture }}
-    - name: Install PyMI
-      shell: cmd
-      run: |
-        SETLOCAL EnableDelayedExpansion
-        git clone https://github.com/cloudbase/PyMI.git
-        cd PyMi
-        pip install -r requirements.txt || exit /b
-        pip install . || exit /b
     - name: Download external dependencies
       shell: powershell
       run: |
@@ -48,6 +40,14 @@ jobs:
         try {
             python -W ignore -m pip install . 2>&1 | %{ "$_" }
         } catch {}
+    - name: Install PyMI
+      shell: cmd
+      run: |
+        SETLOCAL EnableDelayedExpansion
+        git clone https://github.com/cloudbase/PyMI.git
+        cd PyMi
+        pip install -r requirements.txt || exit /b
+        pip install . || exit /b
     - name: Run Cloudbase-Init
       shell: powershell
       run: |
