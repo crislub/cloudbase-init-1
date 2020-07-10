@@ -58,8 +58,7 @@ def check_metadata_ip_route(metadata_url):
         metadata_host = metadata_netloc.split(':')[0]
 
         if metadata_host.startswith("169.254."):
-            if (not osutils.check_static_route_exists(metadata_host) and
-                    not check_url(metadata_url)):
+            if (not osutils.check_static_route_exists(metadata_host)):
                 (interface_index, gateway) = osutils.get_default_gateway()
                 if gateway:
                     try:
