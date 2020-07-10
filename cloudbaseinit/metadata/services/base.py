@@ -20,12 +20,13 @@ import io
 import time
 
 from oslo_log import log as oslo_logging
-import requests
 import six
+from urllib import parse
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
 from cloudbaseinit.utils import encoding
+from cloudbaseinit.utils import requests_wrapper
 
 CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
@@ -304,7 +305,7 @@ class BaseHTTPMetadataService(BaseMetadataService):
     def _http_request(self, url, data=None, headers=None, method=None):
         """Get content for received url."""
         if not url.startswith("http"):
-            url = requests.compat.urljoin(self._base_url, url)
+            url = parse.urljoin(self._base_url, url)
         if not method:
             if data:
                 method = "POST"
@@ -313,6 +314,7 @@ class BaseHTTPMetadataService(BaseMetadataService):
         method = method.upper()
 
         LOG.debug('Executing http request %s at %s', method, url)
+        requests = requests_wrapper.import_module()
         response = requests.request(method=method, url=url, data=data,
                                     headers=headers,
                                     verify=self._verify_https_request())
@@ -321,6 +323,7 @@ class BaseHTTPMetadataService(BaseMetadataService):
 
     def _get_data(self, path):
         """Getting the required information using metadata service."""
+        requests = requests_wrapper.import_module()
         try:
             response = self._http_request(path)
         except requests.HTTPError as exc:

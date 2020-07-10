@@ -17,8 +17,9 @@ import threading
 
 from oslo_log import log as oslo_logging
 import pbr.version
-import requests
 import six
+
+from cloudbaseinit.utils import requests_wrapper
 
 
 _UPDATE_CHECK_URL = 'https://www.cloudbase.it/checkupdates.php?p={0}&v={1}'
@@ -29,6 +30,7 @@ LOG = oslo_logging.getLogger(__name__)
 def _read_url(url):
     # Disable certificate verification on Python 2 as
     # requests' CA list is incomplete. Works fine on Python3.
+    requests = requests_wrapper.import_module()
     req = requests.get(url, verify=six.PY3,
                        headers={'User-Agent': _PRODUCT_NAME})
     req.raise_for_status()

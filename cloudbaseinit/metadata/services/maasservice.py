@@ -20,7 +20,7 @@ import json
 import netaddr
 from oauthlib import oauth1
 from oslo_log import log as oslo_logging
-import requests
+from urllib import parse
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
@@ -100,7 +100,7 @@ class MaaSHttpService(base.BaseHTTPMetadataService):
     def _http_request(self, url, data=None, headers=None, method=None):
         """Get content for received url."""
         if not url.startswith("http"):
-            url = requests.compat.urljoin(self._base_url, url)
+            url = parse.urljoin(self._base_url, url)
         headers = {} if headers is None else headers
         headers.update(self._get_oauth_headers(url))
 

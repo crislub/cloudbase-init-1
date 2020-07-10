@@ -14,13 +14,13 @@
 """Metadata Service for Packet."""
 
 import json
-import requests
 
 from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
 from cloudbaseinit.metadata.services import base
 from oslo_log import log as oslo_logging
 from six.moves.urllib import error
+from urllib import parse
 
 CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
@@ -92,7 +92,7 @@ class PacketService(base.BaseHTTPMetadataService):
 
     def get_user_pwd_encryption_key(self):
         phone_home_url = self._get_phone_home_url()
-        key_url = requests.compat.urljoin('%s/' % phone_home_url, "key")
+        key_url = parse.urljoin('%s/' % phone_home_url, "key")
         return self._get_cache_data(key_url, decode=True)
 
     @property
