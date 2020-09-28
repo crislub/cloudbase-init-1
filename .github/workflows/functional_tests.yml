@@ -40,6 +40,9 @@ jobs:
         try {
             python -W ignore -m pip install . 2>&1 | %{ "$_" }
         } catch {}
+        try {
+            python -W ignore -m pip freeze 2>&1 | %{ "$_" }
+        } catch {}
     - name: Run Cloudbase-Init
       shell: powershell
       run: |
