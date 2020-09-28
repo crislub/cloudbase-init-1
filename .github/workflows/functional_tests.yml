@@ -1,4 +1,4 @@
-name: Cloudbase-Init functional test
+name: Cloudbase-Init functional test t
 
 on: [push, pull_request]
 
