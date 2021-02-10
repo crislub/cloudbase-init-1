@@ -280,13 +280,16 @@ class NoCloudConfigDriveService(baseconfigdrive.BaseConfigDriveService):
         self._meta_data = {}
 
     def get_user_data(self):
-        return self._get_cache_data("user-data")
+        return (self._get_cache_data("user-data")
+                or self._get_cache_data("user_data"))
 
     def _get_meta_data(self):
         if self._meta_data:
             return self._meta_data
 
-        raw_meta_data = self._get_cache_data("meta-data", decode=True)
+        raw_meta_data = (self._get_cache_data("meta-data", decode=True)
+                         or self._get_cache_data("meta_data", decode=True))
+
         try:
             self._meta_data = (
                 serialization.parse_json_yaml(raw_meta_data))
@@ -318,8 +321,10 @@ class NoCloudConfigDriveService(baseconfigdrive.BaseConfigDriveService):
 
     def get_network_details_v2(self):
         try:
-            raw_network_data = self._get_cache_data("network-config",
-                                                    decode=True)
+            raw_network_data = (
+                self._get_cache_data("network-config", decode=True)
+                or self._get_cache_data("network_config", decode=True)
+            )
             network_data = serialization.parse_json_yaml(raw_network_data)
             if not network_data:
                 LOG.info("V2 network metadata is empty")
