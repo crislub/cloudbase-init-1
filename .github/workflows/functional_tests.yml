@@ -13,7 +13,10 @@ jobs:
         cloud: [openstack]
 
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout tools repo
+      uses: actions/checkout@v2
+      with:
+        repository: cloudbase/cloudbase-init
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
