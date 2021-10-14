@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       max-parallel: 100
       matrix:
@@ -56,13 +56,13 @@ jobs:
         mkdir "./metadata" | Out-Null
         cp -recurse -force "$((Get-DiskImage (Resolve-Path './cloudbase-init-config-drive.iso') | Get-Volume).DriveLetter):\*" "./metadata";
         if (Test-path ".\metadata\openstack\latest\network_data.json.template") {
-            (Get-Content ".\metadata\openstack\latest\network_data.json.template").Replace("REPLACE_MAC_ADDRESS", ((Get-NetAdapter Ethernet).macaddress).Replace("-",":")).Replace("10.1.0.4", ((Get-NetIPAddress -InterfaceAlias ethernet -AddressFamily IPv4).IPAddress)) | Set-Content ".\metadata\openstack\latest\network_data.json" -Encoding Ascii;
+            # (Get-Content ".\metadata\openstack\latest\network_data.json.template").Replace("REPLACE_MAC_ADDRESS", ((Get-NetAdapter Ethernet).macaddress).Replace("-",":")).Replace("10.1.0.4", ((Get-NetIPAddress -InterfaceAlias ethernet -AddressFamily IPv4).IPAddress)) | Set-Content ".\metadata\openstack\latest\network_data.json" -Encoding Ascii;
         }
         cat ".\metadata\openstack\latest\network_data.json";
         Start-Process -FilePath python.exe -ArgumentList "-m http.server" -NoNewWindow -WorkingDirectory (Resolve-Path("./metadata")) 2>&1 >> http_server.log
         cd "cbs-test-res/${{ matrix.cloud }}/"
         try {
-            #& cmd /c "cloudbase-init.exe --noreset_service_password --config-file ./cloudbase-init.conf 2>&1" | Tee-Object -FilePath cloudbase-init.log
+            & cmd /c "cloudbase-init.exe --noreset_service_password --config-file ./cloudbase-init.conf 2>&1" | Tee-Object -FilePath cloudbase-init.log
         } catch {}
         $errors = $(cat ./cloudbase-init.log | Where-Object {$_ -like "*error*"})
         $pluginExecution = $(cat ./cloudbase-init.log | Where-Object {$_ -like "*Plugins execution done*"})
