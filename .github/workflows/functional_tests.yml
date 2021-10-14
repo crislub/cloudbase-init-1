@@ -8,7 +8,7 @@ jobs:
     strategy:
       max-parallel: 100
       matrix:
-        python-version: [3.6]
+        python-version: [3.7]
         architecture: [x64]
         cloud: [openstack-http]
 
