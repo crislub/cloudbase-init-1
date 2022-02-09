@@ -13,10 +13,12 @@
 #    under the License.
 
 import re
+import time
 
 import netaddr
 from oslo_log import log as oslo_logging
 
+from cloudbaseinit import conf as cloudbaseinit_conf
 from cloudbaseinit import exception
 from cloudbaseinit.models import network as network_model
 from cloudbaseinit.osutils import factory as osutils_factory
@@ -24,6 +26,7 @@ from cloudbaseinit.plugins.common import base as plugin_base
 from cloudbaseinit.utils import network
 
 
+CONF = cloudbaseinit_conf.CONF
 LOG = oslo_logging.getLogger(__name__)
 
 # Mandatory network details are marked with True. And
@@ -124,49 +127,77 @@ def _preprocess_nics(network_details, network_adapters):
 class NetworkConfigPlugin(plugin_base.BasePlugin):
     def _process_network_details(self, network_details):
         osutils = osutils_factory.get_os_utils()
+
+        reboot_required = False
+        configured = False
+        macnics = {}
+
         # Check and save NICs by MAC.
         network_adapters = osutils.get_network_adapters()
         network_details = _preprocess_nics(network_details,
                                            network_adapters)
-        macnics = {}
+
         for nic in network_details:
             # Assuming that the MAC address is unique.
             macnics[nic.mac] = nic
 
         # Try configuring all the available adapters.
         adapter_macs = [pair[1] for pair in network_adapters]
-        reboot_required = False
-        configured = False
-        for mac in adapter_macs:
-            nic = macnics.pop(mac, None)
-            if not nic:
-                LOG.warn("Missing details for adapter %s", mac)
-                continue
 
-            name = osutils.get_network_adapter_name_by_mac_address(mac)
-            LOG.info("Configuring network adapter: %s", name)
+        network_details_nr = len(network_details)
+        LOG.debug("Found '%d' nics to configure", network_details_nr)
+        retry_count = 0
+        nics_configured = 0
 
-            # In v6 only case, nic.address and nic.netmask could be unset
-            if nic.address and nic.netmask:
-                reboot = osutils.set_static_network_config(
-                    name,
-                    nic.address,
-                    nic.netmask,
-                    nic.gateway,
-                    nic.dnsnameservers or []
-                )
-            reboot_required = reboot or reboot_required
-            # Set v6 info too if available.
-            if nic.address6 and nic.netmask6:
-                reboot = osutils.set_static_network_config(
-                    name,
-                    nic.address6,
-                    nic.netmask6,
-                    nic.gateway6,
-                    []
-                )
-            reboot_required = reboot or reboot_required
-            configured = True
+        while True:
+            LOG.debug("Trying to configure nics(%d-nth try)", retry_count + 1)
+            for mac in adapter_macs:
+                nic = macnics.pop(mac, None)
+                if not nic:
+                    LOG.warn("Missing details for adapter %s", mac)
+                    continue
+
+                name = osutils.get_network_adapter_name_by_mac_address(mac)
+                LOG.info("Configuring network adapter: %s", name)
+
+                # In v6 only case, nic.address and nic.netmask could be unset
+                if nic.address and nic.netmask:
+                    reboot = osutils.set_static_network_config(
+                        name,
+                        nic.address,
+                        nic.netmask,
+                        nic.gateway,
+                        nic.dnsnameservers or []
+                    )
+                reboot_required = reboot or reboot_required
+                # Set v6 info too if available.
+                if nic.address6 and nic.netmask6:
+                    reboot = osutils.set_static_network_config(
+                        name,
+                        nic.address6,
+                        nic.netmask6,
+                        nic.gateway6,
+                        []
+                    )
+                reboot_required = reboot or reboot_required
+                configured = True
+                nics_configured += 1
+
+            retry_count += 1
+
+            if (nics_configured >= network_details_nr
+                    or retry_count >= CONF.retry_count):
+                break
+
+            # try again to retrieve the network adapters
+            time.sleep(CONF.retry_count_interval)
+            network_adapters = osutils.get_network_adapters()
+            network_details = _preprocess_nics(network_details,
+                                               network_adapters)
+            for nic in network_details:
+                macnics[nic.mac] = nic
+            adapter_macs = [pair[1] for pair in network_adapters]
+
         for mac in macnics:
             LOG.warn("Details not used for adapter %s", mac)
         if not configured:
