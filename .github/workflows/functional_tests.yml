@@ -11,7 +11,7 @@ jobs:
       matrix:
         python-version: [3.8]
         architecture: [x64]
-        cloud: [openstack, nocloud]
+        cloud: [nocloud]
 
     steps:
     - uses: actions/checkout@v1
