@@ -10,7 +10,7 @@ jobs:
       matrix:
         python-version: [3.7]
         architecture: [x64]
-        cloud: [openstack-http]
+        cloud: [nocloud]
 
     steps:
     - name: Checkout tools repo
@@ -55,10 +55,6 @@ jobs:
         Mount-DiskImage -ImagePath (Resolve-Path ./cloudbase-init-config-drive.iso) | Out-Null
         mkdir "./metadata" | Out-Null
         cp -recurse -force "$((Get-DiskImage (Resolve-Path './cloudbase-init-config-drive.iso') | Get-Volume).DriveLetter):\*" "./metadata";
-        if (Test-path ".\metadata\openstack\latest\network_data.json.template") {
-            # (Get-Content ".\metadata\openstack\latest\network_data.json.template").Replace("REPLACE_MAC_ADDRESS", ((Get-NetAdapter Ethernet).macaddress).Replace("-",":")).Replace("10.1.0.4", ((Get-NetIPAddress -InterfaceAlias ethernet -AddressFamily IPv4).IPAddress)) | Set-Content ".\metadata\openstack\latest\network_data.json" -Encoding Ascii;
-        }
-        cat ".\metadata\openstack\latest\network_data.json";
         Start-Process -FilePath python.exe -ArgumentList "-m http.server" -NoNewWindow -WorkingDirectory (Resolve-Path("./metadata")) 2>&1 >> http_server.log
         cd "cbs-test-res/${{ matrix.cloud }}/"
         try {
