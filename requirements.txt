@@ -2,9 +2,8 @@ pbr>=2.0.0
 iso8601
 netaddr>=0.7.6
 pyserial
-oslo.config==8.8.0
-oslo.log==4.6.1
-oslo.utils==4.12.2
+oslo.config
+oslo.log
 six>=1.7.0
 Babel>=1.3
 oauthlib
