@@ -67,8 +67,8 @@ class AzureService(base.BaseHTTPMetadataService):
         self._osutils = osutils_factory.get_os_utils()
 
     def _get_wire_server_endpoint_address(self):
-        total_time = 900
-        poll_time = 5
+        total_time = 150
+        poll_time = 2
         retries = total_time / poll_time
 
         while True:
