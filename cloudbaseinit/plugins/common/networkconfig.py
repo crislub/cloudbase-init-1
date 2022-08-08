@@ -142,7 +142,6 @@ class NetworkConfigPlugin(plugin_base.BasePlugin):
             if not nic:
                 LOG.warn("Missing details for adapter %s", mac)
                 continue
-
             name = osutils.get_network_adapter_name_by_mac_address(mac)
             LOG.info("Configuring network adapter: %s", name)
 
@@ -194,15 +193,18 @@ class NetworkConfigPlugin(plugin_base.BasePlugin):
             link.type == network_model.LINK_TYPE_PHYSICAL]
 
         for link in physical_links:
-            adapter_name = osutils.get_network_adapter_name_by_mac_address(
-                link.mac_address)
+            if link.mac_address is None:
+                LOG.warning('Mac address is null')
+            else:
+                adapter_name = osutils.get_network_adapter_name_by_mac_address(
+                    link.mac_address)
 
-            if adapter_name != link.name:
-                LOG.info(
-                    "Renaming network adapter \"%(old_name)s\" to "
-                    "\"%(new_name)s\"",
-                    {"old_name": adapter_name, "new_name": link.name})
-                osutils.rename_network_adapter(adapter_name, link.name)
+                if adapter_name != link.name:
+                    LOG.info(
+                        "Renaming network adapter \"%(old_name)s\" to "
+                        "\"%(new_name)s\"",
+                        {"old_name": adapter_name, "new_name": link.name})
+                    osutils.rename_network_adapter(adapter_name, link.name)
 
             NetworkConfigPlugin._process_link_common(osutils, link)
 
@@ -291,7 +293,6 @@ class NetworkConfigPlugin(plugin_base.BasePlugin):
     @staticmethod
     def _process_network_details_v2(network_details):
         osutils = osutils_factory.get_os_utils()
-
         NetworkConfigPlugin._process_physical_links(
             osutils, network_details)
         NetworkConfigPlugin._process_bond_links(osutils, network_details)
