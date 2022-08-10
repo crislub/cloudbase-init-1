@@ -194,7 +194,7 @@ class NetworkConfigPlugin(plugin_base.BasePlugin):
             link.type == network_model.LINK_TYPE_PHYSICAL]
 
         for link in physical_links:
-            if link.mac_address is None:
+            if (link.mac_address is None) or (link.mac_address == ''):
                 LOG.warning('Mac address is null')
             else:
                 adapter_name = osutils.get_network_adapter_name_by_mac_address(
